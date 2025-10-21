@@ -1,0 +1,88 @@
+// This is your Prisma schema file
+// For SQLite (dev): DATABASE_URL="file:./dev.db"
+// For Postgres (prod): DATABASE_URL="postgresql://user:password@host:5432/database"
+
+datasource db {
+  provider = "sqlite" // Change to "postgresql" for production
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Core project metadata
+model Project {
+  id          String   @id @default(cuid())
+  title       String   @default("Untitled Project")
+  pitch       String?
+  platforms   String?  // Comma-separated: "Web,iOS,Android"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  graph       ProjectGraph?
+  artifacts   Artifact[]
+  events      Event[]
+  decisions   DecisionLog[]
+}
+
+// Stores the full module graph as JSON
+model ProjectGraph {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // JSON blob stored as string: { nodes: [...], edges: [...] }
+  // Parse/stringify when using. For Postgres, change to Json type.
+  graphData String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Generated artifacts (PRD, BackendSpec, FrontendSpec, UISpec, Mermaid, PromptPacks, etc.)
+model Artifact {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type      String   // "PRD", "BackendSpec", "FrontendSpec", "UISpec", "Mermaid_Flow", "Mermaid_ERD", "PromptPack_Cursor", etc.
+  content   String   // JSON string or raw text
+  version   Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, type], name: "projectId_type")
+  @@index([projectId, type])
+}
+
+// Event log for reconciliation and audit trail
+model Event {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type      String   // "ModuleAdded", "ModuleRemoved", "ModuleUpdated", "PRDEdited", "ResearchUpdated", etc.
+  payload   String   // Event-specific data (JSON string for SQLite, Json type for Postgres)
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+// Decision log for observability
+model DecisionLog {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stage     String   // "PRD", "Backend", "Frontend", "UI", "Research"
+  decision  String   // Human-readable decision
+  rationale String?  // Why this decision was made
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}

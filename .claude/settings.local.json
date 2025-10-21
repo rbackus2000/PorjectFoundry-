@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p docs logs apps/web)",
+      "Bash(mv ProjectFoundry_Design_Document.md docs/)",
+      "Bash(npm init -y)",
+      "Bash(npm install)",
+      "Bash(npx prisma migrate dev --name init)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(npm run dev)",
+      "Bash(npx prisma db push --accept-data-loss)",
+      "Bash(tree -L 3 -I 'node_modules|.next' /Users/robertbackus/Documents/ProjectFoundry)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
