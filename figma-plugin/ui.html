@@ -1,92 +1,26 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f5f5f5;
-    }
-    h1 {
-      font-size: 18px;
-      margin: 0 0 16px 0;
-      font-weight: 600;
-    }
-    p {
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 16px;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 10px;
-      font-family: 'Monaco', monospace;
-      font-size: 12px;
-      box-sizing: border-box;
-      resize: vertical;
-    }
-    .actions {
-      margin-top: 16px;
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-    button {
-      padding: 8px 16px;
-      border-radius: 6px;
-      border: none;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    button.primary {
-      background: #18a0fb;
-      color: white;
-    }
-    button.primary:hover {
-      background: #1490e0;
-    }
-    button.secondary {
-      background: #e3e3e3;
-      color: #333;
-    }
-    button.secondary:hover {
-      background: #d0d0d0;
-    }
-  </style>
-</head>
-<body>
-  <h1>Import UI Spec</h1>
-  <p>Paste the contents of <code>/design/ui-spec.json</code> below:</p>
-  <textarea id="uiSpecInput" placeholder='{"designSystem": {...}, "components": [...], "screens": [...]}'></textarea>
-
-  <div class="actions">
-    <button class="secondary" id="cancel">Cancel</button>
-    <button class="primary" id="import">Import</button>
+<body style="margin:0;font:13px/1.4 Inter,ui-sans-serif">
+  <div style="padding:12px">
+    <h3 style="margin:0 0 8px">Import UI Spec JSON</h3>
+    <textarea id="json" style="width:100%;height:260px;border:1px solid #e5e7eb;border-radius:8px;padding:8px" placeholder='Paste /design/ui-spec.json here'></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button id="import">Import</button>
+      <span id="status" style="color:#64748b"></span>
+    </div>
   </div>
-
   <script>
-    document.getElementById('import').onclick = () => {
-      const uiSpecJson = document.getElementById('uiSpecInput').value;
-      if (!uiSpecJson.trim()) {
-        alert('Please paste a UI spec JSON');
-        return;
-      }
-
-      try {
-        JSON.parse(uiSpecJson); // Validate JSON
-        parent.postMessage({ pluginMessage: { type: 'import-ui-spec', uiSpecJson } }, '*');
-      } catch (e) {
-        alert('Invalid JSON: ' + e.message);
-      }
+    const status = document.getElementById("status");
+    document.getElementById("import").onclick = () => {
+      const payload = document.getElementById("json").value;
+      parent.postMessage({ pluginMessage: { type: "import", payload } }, "*");
+      status.textContent = "Importing…";
     };
-
-    document.getElementById('cancel').onclick = () => {
-      parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+    window.onmessage = (e) => {
+      const msg = e.data.pluginMessage;
+      if (!msg) return;
+      if (msg.type === "done") status.textContent = "Done.";
+      if (msg.type === "error") status.textContent = "Error: " + msg.message;
     };
   </script>
 </body>

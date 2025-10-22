@@ -159,7 +159,120 @@ npm run gen          # Generate Prisma client
 npm run migrate      # Run Prisma migrations
 npm run db:push      # Push schema (dev)
 npm run db:studio    # Open Prisma Studio
+npm run rag:ingest   # Ingest single file to RAG
+npm run rag:ingest-dir  # Ingest directory to RAG
 ```
+
+---
+
+## RAG Quickstart
+
+Project Foundry includes a production-grade RAG (Retrieval-Augmented Generation) subsystem for grounding AI agents with cited, searchable documentation.
+
+### Features
+- **Hybrid Search**: 0.7 vector similarity + 0.3 full-text ranking
+- **pgvector**: Supabase-native vector search with HNSW indexing
+- **Org-Scoped RLS**: Multi-tenant security policies
+- **Citation-Ready**: Every chunk links back to source documents
+- **1536-dim embeddings**: OpenAI `text-embedding-3-small`
+
+### Setup
+
+**1. Configure Supabase**
+
+Create a Supabase project and apply the RAG migration:
+
+```bash
+# Option 1: Print migration SQL with instructions
+npm run print-rag-migration
+
+# Option 2: Manually copy from file
+# Open: /supabase/migrations/20251020_rag.sql
+# Paste into Supabase SQL Editor at:
+# https://supabase.com/dashboard/project/YOUR_PROJECT/sql
+```
+
+> **Note**: The Supabase REST API doesn't support executing DDL, so the migration must be applied manually through the SQL Editor.
+
+**2. Set Environment Variables**
+
+Update `.env` with your Supabase and OpenAI credentials:
+
+```bash
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+OPENAI_API_KEY="sk-..."
+
+RAG_EMBEDDING_MODEL="text-embedding-3-small"
+RAG_CHUNK_TOKENS=900
+RAG_CHUNK_OVERLAP=150
+RAG_TOP_K=12
+RAG_DEFAULT_ORG_ID="00000000-0000-0000-0000-000000000001"
+```
+
+**3. Ingest Documentation**
+
+Ingest all files in `/docs`:
+
+```bash
+cd apps/web
+npm run rag:ingest-dir -- --root ../../docs --org 00000000-0000-0000-0000-000000000001
+```
+
+Or ingest a single file:
+
+```bash
+npm run rag:ingest -- --file ../../docs/ProjectFoundry_Design_Document.md --org 00000000-0000-0000-0000-000000000001
+```
+
+**4. Optimize Indexes (First Time Only)**
+
+After first bulk load:
+
+```sql
+-- In Supabase SQL Editor:
+ANALYZE doc_chunks;
+```
+
+**5. Test Search**
+
+Via API:
+
+```bash
+curl -s -X POST http://localhost:3000/api/rag/search \
+  -H "Content-Type: application/json" \
+  -d '{"orgId":"00000000-0000-0000-0000-000000000001","query":"PRD best practices"}' | jq .
+```
+
+Or use the dev UI at: **http://localhost:3000/artifacts/rag**
+
+### Usage in Agents
+
+Retrieve context before generating:
+
+```typescript
+import { retrieveHybrid } from "@/lib/rag/retriever";
+
+const context = await retrieveHybrid("How to write a PRD?", {
+  orgId: "00000000-0000-0000-0000-000000000001",
+  topK: 5,
+});
+
+const prompt = `
+Context from documentation:
+${context.map(c => c.content).join("\n\n")}
+
+User question: How do I write a PRD?
+`;
+```
+
+### Supported File Types
+
+Currently supported: `.md`, `.txt`, `.html`
+
+To add `.pdf` or `.docx` support:
+1. Install: `npm install pdf-parse mammoth`
+2. Add extractors to `scripts/rag-ingest.ts`
 
 ---
 

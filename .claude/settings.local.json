@@ -9,7 +9,10 @@
       "Bash(curl -s http://localhost:3000/api/health)",
       "Bash(npm run dev)",
       "Bash(npx prisma db push --accept-data-loss)",
-      "Bash(tree -L 3 -I 'node_modules|.next' /Users/robertbackus/Documents/ProjectFoundry)"
+      "Bash(tree -L 3 -I 'node_modules|.next' /Users/robertbackus/Documents/ProjectFoundry)",
+      "Bash(grep -n \"^\\s*\\`}</style>\" features/prd/PRDViewer.tsx)",
+      "Bash(npx tsc:*)",
+      "Read(//var/folders/pd/26xw3p9d6nngwqvqrmnr64600000gn/T/TemporaryItems/NSIRD_screencaptureui_1FAvLO/**)"
     ],
     "deny": [],
     "ask": []

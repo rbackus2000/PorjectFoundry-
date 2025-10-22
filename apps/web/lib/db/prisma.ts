@@ -1,13 +1,28 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+const key = "__prisma__" as const;
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  });
+/**
+ * Lazy-initialized Prisma client
+ * Getter that only connects when first accessed to avoid blocking Next.js compilation
+ */
+function getPrismaClient(): PrismaClient {
+  // @ts-ignore
+  if (!globalThis[key]) {
+    // @ts-ignore
+    globalThis[key] = new PrismaClient({
+      log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    });
+  }
+  // @ts-ignore
+  return globalThis[key] as PrismaClient;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Export as const with lazy getter so existing code doesn't need changes
+export const prisma = new Proxy({} as PrismaClient, {
+  get: (target, prop) => {
+    const client = getPrismaClient();
+    const value = (client as any)[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
+  }
+});

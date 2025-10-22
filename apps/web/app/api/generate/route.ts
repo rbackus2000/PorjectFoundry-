@@ -9,6 +9,8 @@ import { buildLovablePack } from "@/lib/promptpack/buildLovablePack";
 import { buildBoltPack } from "@/lib/promptpack/buildBoltPack";
 import { Idea, ProjectGraph } from "@/lib/zodSchemas";
 
+export const runtime = "nodejs";
+
 /**
  * POST /api/generate
  * Trigger full artifact generation for a project
@@ -41,8 +43,13 @@ export async function POST(request: NextRequest) {
       problem: "Users need a better solution",
       solution: "We provide an innovative tool",
       targetUsers: ["Developers", "Product Managers"],
+      userPersonas: null,
       platforms: project.platforms?.split(",") || ["Web"],
       coreFeatures: graph.nodes.filter((n) => n.status === "in").map((n) => n.label),
+      competitors: null,
+      constraints: null,
+      inspiration: null,
+      successMetrics: null,
     };
 
     // Generate all artifacts using orchestrator

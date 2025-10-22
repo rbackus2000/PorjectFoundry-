@@ -67,4 +67,44 @@
     @apply bg-bg text-text;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* Improved focus styles for accessibility (WCAG 2.1 AA) */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-bg;
+  }
+
+  /* Enhanced focus for buttons and links */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  [role="link"]:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-bg;
+  }
+
+  /* Focus within for complex components */
+  .focus-within\:ring:focus-within {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-bg;
+  }
+
+  /* Ensure high contrast for subtext (WCAG AA: 4.5:1 ratio) */
+  .text-subtext {
+    color: hsl(var(--subtext));
+  }
+}
+
+/* Skip to main content link for keyboard navigation */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 0.5rem 1rem;
+  background-color: hsl(var(--primary));
+  color: white;
+  border-radius: 0.25rem;
+  text-decoration: none;
+}
+
+.skip-to-main:focus {
+  left: 1rem;
+  top: 1rem;
 }

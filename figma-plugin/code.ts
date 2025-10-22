@@ -1,106 +1,65 @@
-/**
- * Project Foundry Figma Plugin
- * Imports ui-spec.json and generates Figma frames
- */
+// Project Foundry UI Importer - Figma Plugin
+// Imports UI specifications and creates frames/nodes on canvas
 
-// Show the UI
-figma.showUI(__html__, { width: 400, height: 500 });
+figma.on("run", ({ command }) => {
+  if (command === "import-ui-spec") {
+    figma.showUI(__html__, { width: 420, height: 420 });
+  }
+});
 
-// Listen for messages from the UI
 figma.ui.onmessage = async (msg) => {
-  if (msg.type === "import-ui-spec") {
-    try {
-      const uiSpec = JSON.parse(msg.uiSpecJson);
-      await importUISpec(uiSpec);
-      figma.notify("UI Spec imported successfully!");
-    } catch (error) {
-      figma.notify(`Error: ${error.message}`, { error: true });
+  if (msg.type !== "import") return;
+  
+  try {
+    const spec = JSON.parse(msg.payload);
+    const page = figma.createPage();
+    page.name = "Project Foundry UI";
+    figma.currentPage = page;
+
+    for (const f of spec.frames ?? []) {
+      const frame = figma.createFrame();
+      frame.name = f.name ?? "Frame";
+      frame.resizeWithoutConstraints(f.width ?? 1200, f.height ?? 800);
+      frame.x = 100 * (spec.frames.indexOf(f) % 3);
+      frame.y = 900 * Math.floor(spec.frames.indexOf(f) / 3);
+      page.appendChild(frame);
+
+      for (const n of f.nodes ?? []) {
+        if (n.type === "text") {
+          const t = figma.createText();
+          await figma.loadFontAsync({ family: "Inter", style: "Regular" }).catch(()=>{});
+          t.characters = n.text ?? "";
+          t.fontSize = n.fontSize ?? 16;
+          t.x = n.x ?? 0; 
+          t.y = n.y ?? 0;
+          frame.appendChild(t);
+        } else if (n.type === "rect") {
+          const r = figma.createRectangle();
+          r.resizeWithoutConstraints(n.width ?? 100, n.height ?? 60);
+          r.x = n.x ?? 0; 
+          r.y = n.y ?? 0;
+          if (n.fill) r.fills = [{ type: "SOLID", color: hexToRgb(n.fill) }];
+          if (n.stroke) { 
+            r.strokes = [{ type: "SOLID", color: hexToRgb(n.stroke) }]; 
+            r.strokeWeight = 1; 
+          }
+          frame.appendChild(r);
+        }
+      }
     }
-  } else if (msg.type === "cancel") {
-    figma.closePlugin();
+
+    figma.notify("Imported UI spec");
+    figma.ui.postMessage({ type: "done" });
+  } catch (e) {
+    figma.notify("Import failed — check JSON");
+    figma.ui.postMessage({ type: "error", message: String(e) });
   }
 };
 
-/**
- * Import UI Spec and create Figma frames
- */
-async function importUISpec(uiSpec: any) {
-  const page = figma.currentPage;
-
-  // Create a parent frame for the design system
-  const designSystemFrame = figma.createFrame();
-  designSystemFrame.name = "Design System";
-  designSystemFrame.resize(1200, 2000);
-  designSystemFrame.x = 0;
-  designSystemFrame.y = 0;
-  page.appendChild(designSystemFrame);
-
-  // Import Colors
-  let yOffset = 50;
-  const colorLabel = figma.createText();
-  await figma.loadFontAsync(colorLabel.fontName as FontName);
-  colorLabel.characters = "Colors";
-  colorLabel.fontSize = 24;
-  colorLabel.x = 50;
-  colorLabel.y = yOffset;
-  designSystemFrame.appendChild(colorLabel);
-  yOffset += 50;
-
-  for (const color of uiSpec.designSystem.colors) {
-    const colorRect = figma.createRectangle();
-    colorRect.resize(100, 100);
-    colorRect.x = 50;
-    colorRect.y = yOffset;
-    colorRect.fills = [{ type: "SOLID", color: hexToRgb(color.hex) }];
-    designSystemFrame.appendChild(colorRect);
-
-    const colorText = figma.createText();
-    await figma.loadFontAsync(colorText.fontName as FontName);
-    colorText.characters = `${color.name}\n${color.hex}`;
-    colorText.fontSize = 14;
-    colorText.x = 160;
-    colorText.y = yOffset + 30;
-    designSystemFrame.appendChild(colorText);
-
-    yOffset += 120;
-  }
-
-  // Create screen frames
-  let screenXOffset = 1300;
-  for (const screen of uiSpec.screens) {
-    const screenFrame = figma.createFrame();
-    screenFrame.name = screen.name;
-    screenFrame.resize(375, 667); // iPhone size as default
-    screenFrame.x = screenXOffset;
-    screenFrame.y = 0;
-    page.appendChild(screenFrame);
-
-    // Add screen label
-    const screenLabel = figma.createText();
-    await figma.loadFontAsync(screenLabel.fontName as FontName);
-    screenLabel.characters = `${screen.name}\n${screen.path}`;
-    screenLabel.fontSize = 16;
-    screenLabel.x = 20;
-    screenLabel.y = 20;
-    screenFrame.appendChild(screenLabel);
-
-    screenXOffset += 400;
-  }
-
-  // Zoom to fit
-  figma.viewport.scrollAndZoomIntoView([designSystemFrame]);
-}
-
-/**
- * Convert hex color to RGB (0-1 range)
- */
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16) / 255,
-        g: parseInt(result[2], 16) / 255,
-        b: parseInt(result[3], 16) / 255,
-      }
-    : { r: 0, g: 0, b: 0 };
+function hexToRgb(hex: string): RGB {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0,2),16) / 255;
+  const g = parseInt(h.substring(2,4),16) / 255;
+  const b = parseInt(h.substring(4,6),16) / 255;
+  return { r, g, b };
 }

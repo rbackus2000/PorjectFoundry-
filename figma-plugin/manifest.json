@@ -1,11 +1,9 @@
 {
-  "name": "Project Foundry Importer",
-  "id": "project-foundry-importer",
+  "name": "Project Foundry UI Importer",
+  "id": "project-foundry-ui-importer",
   "api": "1.0.0",
-  "main": "code.js",
+  "main": "code.ts",
   "ui": "ui.html",
   "editorType": ["figma", "figjam"],
-  "networkAccess": {
-    "allowedDomains": ["none"]
-  }
+  "menu": [{ "name": "Import UI Spec", "command": "import-ui-spec" }]
 }

@@ -17,6 +17,8 @@ model Project {
   title       String   @default("Untitled Project")
   pitch       String?
   platforms   String?  // Comma-separated: "Web,iOS,Android"
+  status      String   @default("draft") // "draft" or "complete"
+  wizardData  String?  // JSON string of wizard form data for resuming drafts
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

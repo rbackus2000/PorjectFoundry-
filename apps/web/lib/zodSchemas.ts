@@ -17,9 +17,8 @@ export const ModuleNodeSchema = z.object({
   type: z.string(), // "feature", "integration", "infrastructure", etc.
   label: z.string(),
   status: ModuleStatusSchema,
-  description: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
-  position: z.object({ x: z.number(), y: z.number() }).optional(),
+  description: z.string().nullable(),
+  position: z.object({ x: z.number(), y: z.number() }).nullable(),
 });
 export type ModuleNode = z.infer<typeof ModuleNodeSchema>;
 
@@ -27,7 +26,7 @@ export const ModuleEdgeSchema = z.object({
   id: z.string(),
   source: z.string(),
   target: z.string(),
-  label: z.string().optional(),
+  label: z.string().nullable(),
 });
 export type ModuleEdge = z.infer<typeof ModuleEdgeSchema>;
 
@@ -38,40 +37,106 @@ export const ProjectGraphSchema = z.object({
 export type ProjectGraph = z.infer<typeof ProjectGraphSchema>;
 
 // ============================================================================
-// IDEA SCHEMA
+// IDEA SCHEMA (Enhanced for comprehensive PRD generation)
 // ============================================================================
+
+export const UserPersonaSchema = z.object({
+  name: z.string(),
+  role: z.string(),
+  goals: z.array(z.string()),
+  painPoints: z.array(z.string()),
+});
+export type UserPersona = z.infer<typeof UserPersonaSchema>;
+
+export const CompetitorSchema = z.object({
+  name: z.string(),
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  url: z.string().nullable(),
+});
+export type Competitor = z.infer<typeof CompetitorSchema>;
 
 export const IdeaSchema = z.object({
   title: z.string(),
-  pitch: z.string(), // One-liner
-  problem: z.string(),
-  solution: z.string(),
-  targetUsers: z.array(z.string()),
+  pitch: z.string(), // One-liner elevator pitch
+  problem: z.string(), // Detailed problem statement
+  solution: z.string(), // How the solution addresses the problem
+  targetUsers: z.array(z.string()), // Simple list for backward compatibility
+  userPersonas: z.array(UserPersonaSchema).nullable(), // Detailed personas
   platforms: z.array(z.string()), // ["Web", "iOS", "Android"]
   coreFeatures: z.array(z.string()),
-  constraints: z.array(z.string()).optional(),
-  inspiration: z.array(z.string()).optional(), // URLs or product names
+  competitors: z.array(CompetitorSchema).nullable(), // Competitive landscape
+  constraints: z.array(z.string()).nullable(), // Budget, timeline, technical constraints
+  inspiration: z.array(z.string()).nullable(), // URLs or product names for inspiration
+  successMetrics: z.array(z.string()).nullable(), // How to measure success (KPIs)
 });
 export type Idea = z.infer<typeof IdeaSchema>;
 
 // ============================================================================
-// PRD SCHEMA
+// PRD SCHEMA (Enhanced with enterprise best practices)
 // ============================================================================
 
+// Flattened section schema (no recursion - OpenAI doesn't support z.lazy())
 export const PRDSectionSchema = z.object({
   heading: z.string(),
   content: z.string(), // Markdown or plain text
-  subsections: z.array(z.lazy(() => PRDSectionSchema)).optional(),
 });
 export type PRDSection = z.infer<typeof PRDSectionSchema>;
 
+export const PRDPersonaSchema = z.object({
+  name: z.string(),
+  role: z.string(),
+  goals: z.array(z.string()),
+  painPoints: z.array(z.string()),
+  useCases: z.array(z.string()),
+});
+export type PRDPersona = z.infer<typeof PRDPersonaSchema>;
+
+export const PRDCompetitorSchema = z.object({
+  name: z.string(),
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  differentiators: z.array(z.string()), // How we differ
+});
+export type PRDCompetitor = z.infer<typeof PRDCompetitorSchema>;
+
+export const PRDSuccessMetricSchema = z.object({
+  metric: z.string(),
+  target: z.string(),
+  baseline: z.string().nullable(),
+  timeframe: z.string().nullable(),
+});
+export type PRDSuccessMetric = z.infer<typeof PRDSuccessMetricSchema>;
+
+export const PRDMilestoneSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  targetDate: z.string().nullable(), // Relative like "Week 4" or "Q2 2024"
+  dependencies: z.array(z.string()).nullable(),
+});
+export type PRDMilestone = z.infer<typeof PRDMilestoneSchema>;
+
 export const PRDSchema = z.object({
   title: z.string(),
-  version: z.string().default("1.0"),
+  version: z.string(),
   lastUpdated: z.string(), // ISO date
   overview: z.string(),
+  problemStatement: z.string(), // Clear articulation of the user problem
   goals: z.array(z.string()),
-  nonGoals: z.array(z.string()).optional(),
+  nonGoals: z.array(z.string()).nullable(),
+
+  // Enhanced persona section
+  userPersonas: z.array(PRDPersonaSchema).nullable(),
+
+  // Competitive landscape
+  competitiveAnalysis: z.object({
+    competitors: z.array(PRDCompetitorSchema),
+    marketOpportunity: z.string().nullable(),
+  }).nullable(),
+
+  // Success metrics and KPIs
+  successMetrics: z.array(PRDSuccessMetricSchema).nullable(),
+
   userStories: z.array(
     z.object({
       id: z.string(),
@@ -86,20 +151,33 @@ export const PRDSchema = z.object({
       name: z.string(),
       description: z.string(),
       priority: z.enum(["P0", "P1", "P2", "P3"]),
-      moduleIds: z.array(z.string()).optional(), // References to graph nodes
+      moduleIds: z.array(z.string()).nullable(), // References to graph nodes
+      dependencies: z.array(z.string()).nullable(), // Feature dependencies
     })
   ),
-  sections: z.array(PRDSectionSchema).optional(), // Free-form sections
+
+  // Assumptions and constraints
+  assumptions: z.array(z.string()).nullable(),
+  constraints: z.array(z.string()).nullable(),
+  dependencies: z.array(z.string()).nullable(), // External dependencies
+
+  // Timeline and milestones
+  timeline: z.object({
+    milestones: z.array(PRDMilestoneSchema),
+    totalDuration: z.string().nullable(), // "12 weeks", "3 months", etc.
+  }).nullable(),
+
+  sections: z.array(PRDSectionSchema).nullable(), // Free-form sections
   citations: z
     .array(
       z.object({
         id: z.string(),
         source: z.string(),
-        url: z.string().optional(),
-        snippet: z.string().optional(),
+        url: z.string().nullable(),
+        snippet: z.string().nullable(),
       })
     )
-    .optional(),
+    .nullable(),
 });
 export type PRD = z.infer<typeof PRDSchema>;
 
@@ -113,12 +191,12 @@ export const BackendEntitySchema = z.object({
     z.object({
       name: z.string(),
       type: z.string(), // "string", "number", "boolean", "date", etc.
-      required: z.boolean().default(true),
-      unique: z.boolean().optional(),
-      relation: z.string().optional(), // "User.id" for foreign keys
+      required: z.boolean(),
+      unique: z.boolean().nullable(),
+      relation: z.string().nullable(), // "User.id" for foreign keys
     })
   ),
-  indexes: z.array(z.string()).optional(),
+  indexes: z.array(z.string()).nullable(),
 });
 export type BackendEntity = z.infer<typeof BackendEntitySchema>;
 
@@ -126,7 +204,7 @@ export const BackendAPISchema = z.object({
   method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
   path: z.string(),
   description: z.string(),
-  auth: z.boolean().default(false),
+  auth: z.boolean(),
   params: z
     .array(
       z.object({
@@ -135,9 +213,7 @@ export const BackendAPISchema = z.object({
         required: z.boolean(),
       })
     )
-    .optional(),
-  body: z.record(z.unknown()).optional(),
-  response: z.record(z.unknown()).optional(),
+    .nullable(),
 });
 export type BackendAPI = z.infer<typeof BackendAPISchema>;
 
@@ -152,7 +228,7 @@ export const BackendSpecSchema = z.object({
         description: z.string(),
       })
     )
-    .optional(),
+    .nullable(),
   integrations: z
     .array(
       z.object({
@@ -160,7 +236,7 @@ export const BackendSpecSchema = z.object({
         purpose: z.string(),
       })
     )
-    .optional(),
+    .nullable(),
 });
 export type BackendSpec = z.infer<typeof BackendSpecSchema>;
 
@@ -171,8 +247,7 @@ export type BackendSpec = z.infer<typeof BackendSpecSchema>;
 export const FrontendRouteSchema = z.object({
   path: z.string(),
   component: z.string(),
-  auth: z.boolean().default(false),
-  props: z.record(z.unknown()).optional(),
+  auth: z.boolean(),
 });
 export type FrontendRoute = z.infer<typeof FrontendRouteSchema>;
 
@@ -188,17 +263,17 @@ export const FrontendComponentSchema = z.object({
         required: z.boolean(),
       })
     )
-    .optional(),
-  state: z.array(z.string()).optional(), // State variables used
-  apis: z.array(z.string()).optional(), // API paths used
+    .nullable(),
+  state: z.array(z.string()).nullable(), // State variables used
+  apis: z.array(z.string()).nullable(), // API paths used
 });
 export type FrontendComponent = z.infer<typeof FrontendComponentSchema>;
 
 export const FrontendSpecSchema = z.object({
   routes: z.array(FrontendRouteSchema),
   components: z.array(FrontendComponentSchema),
-  stateManagement: z.enum(["useState", "zustand", "redux", "context"]).optional(),
-  styling: z.enum(["tailwind", "css-modules", "styled-components"]).optional(),
+  stateManagement: z.enum(["useState", "zustand", "redux", "context"]).nullable(),
+  styling: z.enum(["tailwind", "css-modules", "styled-components"]).nullable(),
 });
 export type FrontendSpec = z.infer<typeof FrontendSpecSchema>;
 
@@ -209,7 +284,7 @@ export type FrontendSpec = z.infer<typeof FrontendSpecSchema>;
 export const UIColorSchema = z.object({
   name: z.string(),
   hex: z.string(),
-  usage: z.string().optional(),
+  usage: z.string().nullable(),
 });
 export type UIColor = z.infer<typeof UIColorSchema>;
 
@@ -217,17 +292,17 @@ export const UITypographySchema = z.object({
   name: z.string(),
   fontSize: z.number(),
   lineHeight: z.number(),
-  fontWeight: z.number().optional(),
-  fontFamily: z.string().optional(),
+  fontWeight: z.number().nullable(),
+  fontFamily: z.string().nullable(),
 });
 export type UITypography = z.infer<typeof UITypographySchema>;
 
 export const UIComponentSchema = z.object({
   name: z.string(),
   type: z.string(), // "Button", "Input", "Card", etc.
-  variants: z.array(z.string()).optional(),
-  states: z.array(z.string()).optional(), // ["default", "hover", "active", "disabled"]
-  description: z.string().optional(),
+  variants: z.array(z.string()).nullable().optional(),
+  states: z.array(z.string()).nullable().optional(), // ["default", "hover", "active", "disabled"]
+  description: z.string().nullable().optional(),
 });
 export type UIComponent = z.infer<typeof UIComponentSchema>;
 
@@ -235,8 +310,8 @@ export const UIScreenSchema = z.object({
   name: z.string(),
   path: z.string(),
   components: z.array(z.string()), // Component names used
-  layout: z.string().optional(), // "single-column", "sidebar-layout", etc.
-  wireframe: z.string().optional(), // ASCII or description
+  layout: z.string().nullable().optional(), // "single-column", "sidebar-layout", etc.
+  wireframe: z.string().nullable().optional(), // ASCII or description
 });
 export type UIScreen = z.infer<typeof UIScreenSchema>;
 
@@ -244,8 +319,8 @@ export const UISpecSchema = z.object({
   designSystem: z.object({
     colors: z.array(UIColorSchema),
     typography: z.array(UITypographySchema),
-    spacing: z.array(z.number()).optional(), // [4, 8, 12, 16, ...]
-    borderRadius: z.array(z.number()).optional(),
+    spacing: z.array(z.number()).nullable().optional(), // [4, 8, 12, 16, ...]
+    borderRadius: z.array(z.number()).nullable().optional(),
   }),
   components: z.array(UIComponentSchema),
   screens: z.array(UIScreenSchema),
@@ -259,9 +334,9 @@ export type UISpec = z.infer<typeof UISpecSchema>;
 export const ResearchCitationSchema = z.object({
   id: z.string(),
   source: z.string(),
-  url: z.string().optional(),
+  url: z.string().nullable().optional(),
   snippet: z.string(),
-  relevance: z.number().min(0).max(1).optional(), // Confidence score
+  relevance: z.number().min(0).max(1).nullable().optional(), // Confidence score
 });
 export type ResearchCitation = z.infer<typeof ResearchCitationSchema>;
 
@@ -297,12 +372,11 @@ export const ModuleRemovedEventSchema = z.object({
 export const ModuleUpdatedEventSchema = z.object({
   type: z.literal("ModuleUpdated"),
   moduleId: z.string(),
-  changes: z.record(z.unknown()),
 });
 
 export const PRDEditedEventSchema = z.object({
   type: z.literal("PRDEdited"),
-  section: z.string().optional(),
+  section: z.string().nullable().optional(),
 });
 
 export const ResearchUpdatedEventSchema = z.object({
