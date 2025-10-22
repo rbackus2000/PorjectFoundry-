@@ -27,9 +27,9 @@ export type LLMConfig = {
 };
 
 const DEFAULT_CONFIG: LLMConfig = {
-  model: "gpt-5-2025-08-07", // GPT-5 with structured outputs
+  model: "gpt-4o", // GPT-4o is widely available and supports structured outputs
   temperature: 0.7,
-  maxTokens: 16000,
+  maxTokens: 4000,
 };
 
 /**
@@ -94,9 +94,14 @@ export async function generateText(params: {
       ],
     });
 
+    console.log("OpenAI completion response:", JSON.stringify(completion, null, 2));
+
     const result = completion.choices[0]?.message?.content;
 
     if (!result) {
+      console.error("No content in completion. Full response:", completion);
+      console.error("Choices:", completion.choices);
+      console.error("First choice:", completion.choices[0]);
       throw new Error("No content from OpenAI");
     }
 

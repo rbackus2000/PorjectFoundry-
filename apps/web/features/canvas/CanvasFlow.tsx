@@ -27,6 +27,7 @@ const nodeTypes: NodeTypes = {
 
 type CanvasFlowProps = {
   projectId: string;
+  projectTitle?: string;
   initialGraph: {
     nodes: Array<{
       id: string;
@@ -44,7 +45,7 @@ type CanvasFlowProps = {
   };
 };
 
-export default function CanvasFlow({ projectId, initialGraph }: CanvasFlowProps) {
+export default function CanvasFlow({ projectId, projectTitle, initialGraph }: CanvasFlowProps) {
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>("radial");
 
   // Convert graph data to ReactFlow format
@@ -110,14 +111,25 @@ export default function CanvasFlow({ projectId, initialGraph }: CanvasFlowProps)
     [setNodes]
   );
 
-  // Update all nodes to have the status change handler
-  const nodesWithHandlers = nodes.map((node) => ({
-    ...node,
-    data: {
-      ...node.data,
-      onStatusChange: handleStatusChange,
-    },
-  }));
+  // Update all nodes to have the status change handler and full project context
+  const nodesWithHandlers = useMemo(() => {
+    // Extract all modules for context
+    const allModules = nodes.map((node) => ({
+      label: node.data.label,
+      category: node.data.category,
+      description: node.data.description,
+    }));
+
+    return nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        onStatusChange: handleStatusChange,
+        allModules,
+        projectTitle: projectTitle || projectId,
+      },
+    }));
+  }, [nodes, handleStatusChange, projectTitle, projectId]);
 
   const handleAddModule = useCallback(
     (module: ModuleTemplate) => {

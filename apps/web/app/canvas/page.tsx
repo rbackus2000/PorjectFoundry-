@@ -84,7 +84,7 @@ export default function CanvasPage() {
         <p className="text-subtext mt-1">{projectTitle}</p>
       </div>
 
-      <CanvasFlow projectId={projectId!} initialGraph={graphData} />
+      <CanvasFlow projectId={projectId!} projectTitle={projectTitle} initialGraph={graphData} />
     </div>
   );
 }
