@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing fieldType" }, { status: 400 });
     }
 
-    if (!context || !context.title) {
+    // For most fields, title is required. For title/pitch/problem/solution, we can work with partial context
+    const requiresTitle = !["title", "pitch", "problem", "solution"].includes(fieldType);
+    if (requiresTitle && (!context || !context.title)) {
       return NextResponse.json({ error: "Missing project context (title required)" }, { status: 400 });
     }
 
@@ -52,6 +54,64 @@ export async function POST(request: NextRequest) {
     let userPrompt = "";
 
     switch (fieldType) {
+      case "title":
+        systemPrompt = `You are a product naming expert. Create catchy, memorable project names.`;
+        userPrompt = `Based on this information, suggest a great project title:
+
+${pitch ? `**Pitch:** ${pitch}` : ""}
+${problem ? `**Problem:** ${problem}` : ""}
+${solution ? `**Solution:** ${solution}` : ""}
+
+Create a clear, memorable project title (2-5 words). Make it professional yet catchy.
+
+Return ONLY the title, nothing else.`;
+        break;
+
+      case "pitch":
+        systemPrompt = `You are an expert at writing elevator pitches. Create compelling one-sentence descriptions.`;
+        userPrompt = `Based on this project information, write a compelling elevator pitch (1-2 sentences):
+
+${title ? `**Project Title:** ${title}` : ""}
+${problem ? `**Problem:** ${problem}` : ""}
+${solution ? `**Solution:** ${solution}` : ""}
+
+Write a clear, compelling elevator pitch that explains what the product does and why it matters.
+
+Return ONLY the pitch, nothing else.`;
+        break;
+
+      case "problem":
+        systemPrompt = `You are a product strategist expert at identifying user problems and pain points.`;
+        userPrompt = `Based on this project context, write a detailed problem statement:
+
+${title ? `**Project Title:** ${title}` : ""}
+${pitch ? `**Pitch:** ${pitch}` : ""}
+${solution ? `**Solution:** ${solution}` : ""}
+
+Write a clear problem statement (2-3 sentences) that:
+1. Identifies who has the problem
+2. Describes what the problem is
+3. Explains why it matters
+
+Return ONLY the problem statement, nothing else.`;
+        break;
+
+      case "solution":
+        systemPrompt = `You are a product strategist expert at crafting solution descriptions.`;
+        userPrompt = `Based on this project context, write a detailed solution description:
+
+${title ? `**Project Title:** ${title}` : ""}
+${pitch ? `**Pitch:** ${pitch}` : ""}
+${problem ? `**Problem:** ${problem}` : ""}
+
+Write a clear solution description (2-3 sentences) that:
+1. Explains how the product solves the problem
+2. Highlights unique approach or differentiation
+3. Describes key benefits
+
+Return ONLY the solution description, nothing else.`;
+        break;
+
       case "userPersonas":
         systemPrompt = `You are an expert product manager creating detailed user personas based on project context.`;
         userPrompt = `Create 2-3 detailed, realistic user personas for this project:

@@ -31,6 +31,7 @@ export type ProjectFormData = {
 };
 
 const STEPS = [
+  { id: 0, name: "Discover", description: "Find trending app opportunities" },
   { id: 1, name: "Basics", description: "Project title and pitch" },
   { id: 2, name: "Problem & Solution", description: "What you're solving" },
   { id: 3, name: "Users", description: "Target audience" },
@@ -40,11 +41,15 @@ const STEPS = [
 ];
 
 export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: ProjectCreationWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [draftProjectId, setDraftProjectId] = useState<string | undefined>(projectId);
+
+  // Step 0: Discovery state
+  const [discoverQuery, setDiscoverQuery] = useState("");
+  const [discoveredIdeas, setDiscoveredIdeas] = useState<any[]>([]);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -161,13 +166,13 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
   };
 
   const nextStep = () => {
-    if (currentStep < STEPS.length) {
+    if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -209,7 +214,9 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
   };
 
   const resetForm = () => {
-    setCurrentStep(1);
+    setCurrentStep(0);
+    setDiscoverQuery("");
+    setDiscoveredIdeas([]);
     setTitle("");
     setPitch("");
     setProblem("");
@@ -252,8 +259,54 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
     setCompetitors(competitors.filter((_, i) => i !== index));
   };
 
+  const discoverAppIdeas = async () => {
+    if (!discoverQuery.trim()) {
+      alert("Please enter a search query (e.g., 'trending health apps', 'market gaps in fintech')");
+      return;
+    }
+
+    setAiLoading("discover");
+
+    try {
+      const response = await fetch("/api/ai-discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: discoverQuery }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to discover app ideas");
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setDiscoveredIdeas(data.ideas || []);
+    } catch (error) {
+      console.error("Error discovering app ideas:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to discover app ideas";
+      alert(`Discovery Error: ${errorMessage}. Please try again.`);
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const selectDiscoveredIdea = (idea: any) => {
+    setTitle(idea.title || "");
+    setPitch(idea.pitch || "");
+    setProblem(idea.problem || "");
+    setSolution(idea.solution || "");
+    if (idea.targetUsers) setTargetUsers(Array.isArray(idea.targetUsers) ? idea.targetUsers.join("\n") : idea.targetUsers);
+    if (idea.platforms) setPlatforms(idea.platforms);
+    nextStep(); // Move to Step 1
+  };
+
   const getAISuggestions = async (fieldType: string) => {
-    if (!title.trim()) {
+    // Allow Step 0 (discover) to work without title
+    if (currentStep > 0 && !title.trim()) {
       alert("Please enter a project title first");
       return;
     }
@@ -292,6 +345,18 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
 
       // Apply suggestions based on field type
       switch (fieldType) {
+        case "title":
+          setTitle(data.suggestion);
+          break;
+        case "pitch":
+          setPitch(data.suggestion);
+          break;
+        case "problem":
+          setProblem(data.suggestion);
+          break;
+        case "solution":
+          setSolution(data.suggestion);
+          break;
         case "targetUsers":
           setTargetUsers(data.suggestion);
           break;
@@ -336,7 +401,7 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>
-            Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].description}
+            Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].description}
           </DialogDescription>
         </DialogHeader>
 
@@ -353,11 +418,83 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
         </div>
 
         <div className="space-y-6">
+          {/* Step 0: Discover App Ideas */}
+          {currentStep === 0 && (
+            <>
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold mb-2">Discover Trending App Opportunities</h3>
+                <p className="text-sm text-subtext">
+                  Use AI to search the web for trending app ideas, market gaps, and opportunities ready to explode
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="discoverQuery">What are you interested in?</Label>
+                <Textarea
+                  id="discoverQuery"
+                  value={discoverQuery}
+                  onChange={(e) => setDiscoverQuery(e.target.value)}
+                  placeholder="e.g., 'trending health apps 2025', 'market gaps in fintech', 'AI opportunities in education'"
+                  rows={3}
+                />
+                <Button
+                  type="button"
+                  className="mt-3 w-full"
+                  onClick={discoverAppIdeas}
+                  disabled={aiLoading === "discover"}
+                >
+                  {aiLoading === "discover" ? "🔍 Searching..." : "🔍 Discover App Ideas"}
+                </Button>
+              </div>
+
+              {discoveredIdeas.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Discovered Opportunities:</h4>
+                  {discoveredIdeas.map((idea, index) => (
+                    <div
+                      key={index}
+                      className="border border-border rounded-lg p-4 hover:bg-surface cursor-pointer"
+                      onClick={() => selectDiscoveredIdea(idea)}
+                    >
+                      <h5 className="font-semibold text-lg mb-2">{idea.title}</h5>
+                      <p className="text-sm text-subtext mb-2">{idea.pitch}</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {idea.tags?.map((tag: string, i: number) => (
+                          <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-primary mt-2">Click to use this idea →</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="text-center pt-4">
+                <Button variant="ghost" onClick={nextStep}>
+                  Skip & Enter Your Own Idea →
+                </Button>
+              </div>
+            </>
+          )}
+
           {/* Step 1: Basics */}
           {currentStep === 1 && (
             <>
               <div>
-                <Label htmlFor="title">Project Title *</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="title">Project Title *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => getAISuggestions("title")}
+                    disabled={aiLoading === "title"}
+                  >
+                    {aiLoading === "title" ? "✨ Generating..." : "✨ AI Wizard"}
+                  </Button>
+                </div>
                 <Input
                   id="title"
                   value={title}
@@ -366,7 +503,18 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
                 />
               </div>
               <div>
-                <Label htmlFor="pitch">Elevator Pitch *</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="pitch">Elevator Pitch *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => getAISuggestions("pitch")}
+                    disabled={aiLoading === "pitch"}
+                  >
+                    {aiLoading === "pitch" ? "✨ Generating..." : "✨ AI Wizard"}
+                  </Button>
+                </div>
                 <Textarea
                   id="pitch"
                   value={pitch}
@@ -382,7 +530,18 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
           {currentStep === 2 && (
             <>
               <div>
-                <Label htmlFor="problem">Problem Statement *</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="problem">Problem Statement *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => getAISuggestions("problem")}
+                    disabled={aiLoading === "problem"}
+                  >
+                    {aiLoading === "problem" ? "✨ Generating..." : "✨ AI Wizard"}
+                  </Button>
+                </div>
                 <Textarea
                   id="problem"
                   value={problem}
@@ -392,7 +551,18 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
                 />
               </div>
               <div>
-                <Label htmlFor="solution">Solution *</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="solution">Solution *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => getAISuggestions("solution")}
+                    disabled={aiLoading === "solution"}
+                  >
+                    {aiLoading === "solution" ? "✨ Generating..." : "✨ AI Wizard"}
+                  </Button>
+                </div>
                 <Textarea
                   id="solution"
                   value={solution}
@@ -671,7 +841,7 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
           <Button
             variant="outline"
             onClick={prevStep}
-            disabled={currentStep === 1}
+            disabled={currentStep === 0}
           >
             Previous
           </Button>
@@ -689,7 +859,7 @@ export function ProjectCreationWizard({ isOpen, onClose, onSubmit, projectId }: 
               Cancel
             </Button>
 
-            {currentStep < STEPS.length ? (
+            {currentStep < STEPS.length - 1 ? (
               <Button onClick={nextStep}>Next</Button>
             ) : (
               <Button onClick={handleSubmit} disabled={isSubmitting}>

@@ -54,36 +54,30 @@ export default function CanvasPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div>
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-4 w-96 mt-1" />
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="text-center">
+          <Skeleton className="h-9 w-64 mx-auto" />
+          <Skeleton className="h-4 w-96 mt-2 mx-auto" />
         </div>
-        <Skeleton className="h-[calc(100vh-300px)] rounded-lg" />
       </div>
     );
   }
 
   if (error || !graphData) {
     return (
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Module Canvas</h1>
-        </div>
-        <div className="border border-border rounded-lg p-6 bg-surface">
-          <p className="text-error">{error || "Canvas not found"}</p>
+      <div className="h-full w-full flex items-center justify-center p-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold tracking-tight mb-4">Module Canvas</h1>
+          <div className="border border-border rounded-lg p-6 bg-surface">
+            <p className="text-error">{error || "Canvas not found"}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 max-w-[2400px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Module Canvas</h1>
-        <p className="text-subtext mt-1">{projectTitle}</p>
-      </div>
-
+    <div className="h-full w-full flex flex-col">
       <CanvasFlow projectId={projectId!} projectTitle={projectTitle} initialGraph={graphData} />
     </div>
   );

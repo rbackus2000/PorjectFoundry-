@@ -284,8 +284,8 @@ export default function ModuleLibrary({ onAddModule }: ModuleLibraryProps) {
   };
 
   return (
-    <Card className="h-full overflow-hidden flex flex-col">
-      <CardHeader className="border-b border-border">
+    <Card className="h-full overflow-hidden flex flex-col border-0 rounded-none shadow-none">
+      <CardHeader className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg">📦 Module Library</CardTitle>
@@ -351,13 +351,12 @@ export default function ModuleLibrary({ onAddModule }: ModuleLibraryProps) {
           </Dialog>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto space-y-3 pb-4 pt-4">
+      <CardContent className="flex-1 overflow-y-auto space-y-3 p-4">
         {/* Search Bar */}
         <Input
           placeholder="🔍 Search modules..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="mb-3"
         />
 
         {/* Category Filter */}

@@ -11,7 +11,8 @@ export function makeFlowchart(graph: ProjectGraph): string {
   // Add nodes
   for (const node of graph.nodes) {
     const nodeId = sanitizeId(node.id);
-    const label = node.label;
+    // Fallback to node ID if label is undefined or empty
+    const label = node.label || node.id || "Unnamed Module";
     const style = getNodeStyle(node);
 
     lines.push(`  ${nodeId}["${label}"]`);

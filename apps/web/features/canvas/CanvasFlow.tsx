@@ -47,6 +47,9 @@ type CanvasFlowProps = {
 
 export default function CanvasFlow({ projectId, projectTitle, initialGraph }: CanvasFlowProps) {
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>("radial");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [forceRegenerate, setForceRegenerate] = useState(false);
 
   // Convert graph data to ReactFlow format
   const convertedNodes: Node<ModuleNodeData>[] = useMemo(() => {
@@ -85,6 +88,143 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     setNodes(convertedNodes);
     setEdges(convertedEdges);
   }, [convertedNodes, convertedEdges, setNodes, setEdges]);
+
+  // Auto-generate modules if canvas is empty and has never been saved, OR if user forces regeneration
+  useEffect(() => {
+    async function generateModules() {
+      // Only generate if:
+      // 1. Force regenerate is triggered, OR
+      // 2. Canvas is empty (nodes.length === 0) AND we haven't generated yet AND initial graph from DB is empty
+      const initialGraphIsEmpty = initialGraph.nodes.length === 0;
+      const shouldAutoGenerate = !hasGenerated && !isGenerating && nodes.length === 0 && initialGraphIsEmpty;
+
+      if (!forceRegenerate && !shouldAutoGenerate) {
+        return;
+      }
+
+      if (isGenerating) {
+        return; // Already generating
+      }
+
+      setIsGenerating(true);
+      setHasGenerated(true);
+      setForceRegenerate(false); // Reset the flag
+
+      try {
+        // Fetch project details
+        const projectResponse = await fetch(`/api/projects/${projectId}`);
+        const project = await projectResponse.json();
+
+        // Generate modules using AI
+        const response = await fetch("/api/ai-generate-modules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectTitle: project.title,
+            projectPitch: project.pitch,
+            targetUsers: project.targetUsers,
+            platforms: project.platforms,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to generate modules");
+        }
+
+        const data = await response.json();
+
+        // Convert generated modules to nodes with layered positioning
+        const generatedNodes: Node<ModuleNodeData>[] = data.modules.map((module: any, index: number) => {
+          // Layered layout: each layer gets a horizontal row
+          const layer = module.layer || 1;
+          const sequenceInLayer = module.sequenceInLayer || index;
+
+          // Calculate position based on layer and sequence
+          const yPosition = (layer - 1) * 300 + 100; // Vertical spacing between layers
+          const xPosition = sequenceInLayer * 400 + 100; // Horizontal spacing within layer
+
+          return {
+            id: `${index + 1}`,
+            type: "moduleNode",
+            position: { x: xPosition, y: yPosition },
+            data: {
+              label: module.label,
+              status: module.priority === "critical" ? "in" : module.priority === "high" ? "maybe" : "maybe",
+              category: module.category,
+              description: module.description,
+            },
+          };
+        });
+
+        setNodes(generatedNodes);
+        setNodeIdCounter(generatedNodes.length + 1);
+
+        // Generate edges based on dependencies
+        const generatedEdges: Edge[] = [];
+        data.modules.forEach((module: any, index: number) => {
+          module.dependencies?.forEach((dep: string) => {
+            const depIndex = data.modules.findIndex((m: any) => m.label === dep);
+            if (depIndex !== -1) {
+              generatedEdges.push({
+                id: `e${depIndex + 1}-${index + 1}`,
+                source: `${depIndex + 1}`,
+                target: `${index + 1}`,
+                animated: true,
+                style: {
+                  stroke: "hsl(var(--primary))",
+                  strokeWidth: 2,
+                },
+              });
+            }
+          });
+        });
+
+        setEdges(generatedEdges);
+
+        // Auto-save the generated graph (modules are already positioned in layers)
+        setTimeout(() => {
+          saveGraph(generatedNodes, generatedEdges);
+        }, 500);
+
+      } catch (error) {
+        console.error("Error generating modules:", error);
+        alert("Failed to generate modules. You can add them manually from the library.");
+      } finally {
+        setIsGenerating(false);
+      }
+    }
+
+    generateModules();
+  }, [projectId, hasGenerated, isGenerating, nodes.length, initialGraph.nodes.length, forceRegenerate]);
+
+  const saveGraph = async (nodesToSave: Node<ModuleNodeData>[], edgesToSave: Edge[]) => {
+    const graphData = {
+      nodes: nodesToSave.map(({ id, position, data }) => ({
+        id,
+        label: data.label,
+        status: data.status,
+        description: data.description || null,
+        x: position.x,
+        y: position.y,
+      })),
+      edges: edgesToSave.map(({ id, source, target }) => ({
+        id,
+        source,
+        target,
+        label: null,
+      })),
+    };
+
+    try {
+      await fetch(`/api/canvas?projectId=${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ graph: graphData }),
+      });
+    } catch (error) {
+      console.error("Error saving graph:", error);
+    }
+  };
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -257,15 +397,46 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     [setEdges]
   );
 
+  const handleRegenerateModules = useCallback(async () => {
+    if (!confirm("⚠️ WARNING: This will DELETE ALL existing modules and regenerate from scratch using AI.\n\nAll your current modules, connections, and include/exclude choices will be lost.\n\nAre you sure you want to continue?")) {
+      return;
+    }
+
+    // Clear current nodes and edges
+    setNodes([]);
+    setEdges([]);
+
+    // Trigger regeneration
+    setHasGenerated(false);
+    setForceRegenerate(true);
+  }, [setNodes, setEdges]);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] xl:grid-cols-[360px,1fr] 2xl:grid-cols-[400px,1fr] gap-4 h-[calc(100vh-200px)] max-w-[2400px] mx-auto">
+    <div className="grid grid-cols-[320px,1fr] gap-0 h-full w-full">
       {/* Module Library Sidebar */}
-      <div className="overflow-hidden max-h-[800px] lg:max-h-full">
+      <div className="h-full overflow-hidden border-r border-border bg-surface">
         <ModuleLibrary onAddModule={handleAddModule} />
       </div>
 
       {/* Canvas Area */}
-      <div className="relative border border-border rounded-xl bg-background overflow-hidden shadow-2xl min-h-[600px]">
+      <div className="relative h-full w-full bg-background overflow-hidden">
+        {/* AI Generation Loading Overlay */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="text-center space-y-4 p-8 bg-surface border border-border rounded-xl shadow-2xl">
+              <div className="w-16 h-16 mx-auto">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">AI Analyzing Your Project</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Generating all necessary modules...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="h-full" onDrop={handleDrop} onDragOver={handleDragOver}>
           <ReactFlow
             nodes={nodesWithHandlers}
@@ -347,7 +518,10 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
 
           {/* Main Actions */}
           <div className="flex gap-2 bg-background/95 backdrop-blur-xl px-4 py-3 rounded-xl border border-border shadow-2xl">
-            <Button onClick={handleSaveGraph} size="sm" className="h-8">
+            <Button onClick={handleRegenerateModules} size="sm" variant="destructive" className="h-8">
+              🔄 Regenerate All
+            </Button>
+            <Button onClick={handleSaveGraph} size="sm" variant="default" className="h-8">
               💾 Save Graph
             </Button>
             <Button onClick={handleClearCanvas} variant="outline" size="sm" className="h-8">

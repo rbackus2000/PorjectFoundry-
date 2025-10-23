@@ -267,7 +267,7 @@ function ModuleNode({ data, id, selected }: NodeProps<ModuleNodeData>) {
               </h3>
               <div className="bg-surface/50 border border-border rounded-lg p-4">
                 <p className="text-sm leading-relaxed text-foreground/90">
-                  {data.description || `The ${data.label} module provides essential functionality for ${data.category?.toLowerCase() || 'your application'}. This component handles core operations related to ${data.label.toLowerCase()}, ensuring seamless integration with other system modules.`}
+                  {data.description || `The ${data.label || 'module'} module provides essential functionality for ${data.category?.toLowerCase() || 'your application'}. This component handles core operations related to ${(data.label || 'module').toLowerCase()}, ensuring seamless integration with other system modules.`}
                 </p>
               </div>
             </div>
@@ -280,7 +280,7 @@ function ModuleNode({ data, id, selected }: NodeProps<ModuleNodeData>) {
               </h3>
               <div className="space-y-2">
                 {[
-                  `Core ${data.label.toLowerCase()} functionality`,
+                  `Core ${(data.label || 'module').toLowerCase()} functionality`,
                   `Integration with ${data.category || 'system'} components`,
                   `Scalable and maintainable architecture`,
                   `Security and performance optimizations`,
@@ -302,8 +302,8 @@ function ModuleNode({ data, id, selected }: NodeProps<ModuleNodeData>) {
               <div className="bg-surface/50 border border-border rounded-lg p-4 space-y-3">
                 <div className="space-y-2">
                   {[
-                    { step: 1, title: "Initialization", desc: `User accesses ${data.label} interface` },
-                    { step: 2, title: "Interaction", desc: `Performs operations within ${data.label}` },
+                    { step: 1, title: "Initialization", desc: `User accesses ${data.label || 'module'} interface` },
+                    { step: 2, title: "Interaction", desc: `Performs operations within ${data.label || 'module'}` },
                     { step: 3, title: "Processing", desc: "System processes and validates requests" },
                     { step: 4, title: "Completion", desc: "Results are displayed and actions confirmed" },
                   ].map((item) => (
