@@ -366,14 +366,17 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-2xl font-bold">BuildBridge</div>
             <div className="flex gap-8 text-sm text-muted-foreground">
-              <Link href="/dashboard" className="hover:text-foreground transition-colors">
-                Dashboard
+              <Link href="#features" className="hover:text-foreground transition-colors">
+                Features
               </Link>
-              <Link href="/canvas" className="hover:text-foreground transition-colors">
-                Canvas
+              <Link href="#how-it-works" className="hover:text-foreground transition-colors">
+                How It Works
               </Link>
-              <Link href="/artifacts" className="hover:text-foreground transition-colors">
-                Artifacts
+              <Link href="/auth/signup" className="hover:text-foreground transition-colors">
+                Sign Up
+              </Link>
+              <Link href="/auth/signin" className="hover:text-foreground transition-colors">
+                Sign In
               </Link>
             </div>
             <div className="text-sm text-muted-foreground">
