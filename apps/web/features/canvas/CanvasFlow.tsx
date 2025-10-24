@@ -52,6 +52,7 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
   const [forceRegenerate, setForceRegenerate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [selectedLibraryCategory, setSelectedLibraryCategory] = useState<string | null>(null);
 
   // Convert graph data to ReactFlow format
   const convertedNodes: Node<ModuleNodeData>[] = useMemo(() => {
@@ -105,6 +106,15 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
       }, 100);
     }
   }, [nodes.length, reactFlowInstance]);
+
+  // Fit view when category filter changes
+  useEffect(() => {
+    if (reactFlowInstance && filteredNodesForDisplay.length > 0) {
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 500 });
+      }, 100);
+    }
+  }, [selectedLibraryCategory, reactFlowInstance]);
 
   // Auto-generate modules if canvas is empty and has never been saved, OR if user forces regeneration
   useEffect(() => {
@@ -346,6 +356,23 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     }));
   }, [nodes, handleStatusChange, projectTitle, projectId]);
 
+  // Filter nodes based on selected library category
+  const filteredNodesForDisplay = useMemo(() => {
+    if (!selectedLibraryCategory) {
+      return nodesWithHandlers;
+    }
+    return nodesWithHandlers.filter((node) => node.data.category === selectedLibraryCategory);
+  }, [nodesWithHandlers, selectedLibraryCategory]);
+
+  // Filter edges to only show connections between visible nodes
+  const filteredEdgesForDisplay = useMemo(() => {
+    if (!selectedLibraryCategory) {
+      return edges;
+    }
+    const visibleNodeIds = new Set(filteredNodesForDisplay.map((node) => node.id));
+    return edges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  }, [edges, filteredNodesForDisplay, selectedLibraryCategory]);
+
   const handleAddModule = useCallback(
     (module: ModuleTemplate) => {
       const newNode: Node<ModuleNodeData> = {
@@ -473,7 +500,10 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     <div className="grid grid-cols-[320px,1fr] gap-0 h-full w-full">
       {/* Module Library Sidebar */}
       <div className="h-full overflow-hidden border-r border-border bg-surface">
-        <ModuleLibrary onAddModule={handleAddModule} />
+        <ModuleLibrary
+          onAddModule={handleAddModule}
+          onCategoryChange={setSelectedLibraryCategory}
+        />
       </div>
 
       {/* Canvas Area */}
@@ -497,8 +527,8 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
 
         <div className="h-full" onDrop={handleDrop} onDragOver={handleDragOver}>
           <ReactFlow
-            nodes={nodesWithHandlers}
-            edges={edges}
+            nodes={filteredNodesForDisplay}
+            edges={filteredEdgesForDisplay}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}

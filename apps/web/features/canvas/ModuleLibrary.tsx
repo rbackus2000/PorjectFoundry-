@@ -240,11 +240,17 @@ const moduleTemplates: ModuleTemplate[] = [
 
 type ModuleLibraryProps = {
   onAddModule: (module: ModuleTemplate) => void;
+  onCategoryChange?: (category: string | null) => void;
 };
 
-export default function ModuleLibrary({ onAddModule }: ModuleLibraryProps) {
+export default function ModuleLibrary({ onAddModule, onCategoryChange }: ModuleLibraryProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const handleCategoryClick = (category: string | null) => {
+    setSelectedCategory(category);
+    onCategoryChange?.(category);
+  };
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [customModuleName, setCustomModuleName] = useState("");
   const [customModuleDescription, setCustomModuleDescription] = useState("");
@@ -364,7 +370,7 @@ export default function ModuleLibrary({ onAddModule }: ModuleLibraryProps) {
           <Button
             size="sm"
             variant={selectedCategory === null ? "default" : "ghost"}
-            onClick={() => setSelectedCategory(null)}
+            onClick={() => handleCategoryClick(null)}
             className="h-7 text-xs"
           >
             All
@@ -376,7 +382,7 @@ export default function ModuleLibrary({ onAddModule }: ModuleLibraryProps) {
                 key={category}
                 size="sm"
                 variant={selectedCategory === category ? "default" : "ghost"}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => handleCategoryClick(category)}
                 className="h-7 text-xs flex items-center gap-1.5"
               >
                 <Icon className="w-3.5 h-3.5" strokeWidth={2} />
