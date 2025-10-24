@@ -86,7 +86,7 @@ export default function CanvasPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="h-[calc(100vh-3.5rem)] w-full flex flex-col">
       <CanvasFlow projectId={projectId!} projectTitle={projectTitle} initialGraph={graphData} />
     </div>
   );
