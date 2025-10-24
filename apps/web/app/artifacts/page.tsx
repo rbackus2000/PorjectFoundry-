@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MermaidChart } from "@/components/ui/mermaid-chart";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { RefreshCw } from "lucide-react";
 
 const tabItems = [
@@ -41,6 +43,9 @@ export default function ArtifactsPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["web"]);
   const [masterPrompt, setMasterPrompt] = useState<string | null>(null);
   const [isGeneratingMaster, setIsGeneratingMaster] = useState(false);
+
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchArtifacts() {
@@ -88,41 +93,66 @@ export default function ArtifactsPage() {
   };
 
   const handleRegenerate = async () => {
-    if (!projectId) return;
-
-    const confirmed = confirm(
-      "Regenerate all artifacts? This will update all diagrams, specs, and prompt packs based on current project data."
-    );
-
-    if (!confirmed) return;
-
-    setIsRegenerating(true);
-
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to regenerate artifacts");
-      }
-
-      // Refetch the updated artifacts
-      const artifactsResponse = await fetch(`/api/artifacts?projectId=${projectId}`);
-      if (artifactsResponse.ok) {
-        const data = await artifactsResponse.json();
-        setArtifacts(data.artifacts);
-      }
-
-      alert("Artifacts regenerated successfully!");
-    } catch (error) {
-      console.error("Error regenerating artifacts:", error);
-      alert("Failed to regenerate artifacts. Please check your network connection and API key.");
-    } finally {
-      setIsRegenerating(false);
+    if (!projectId) {
+      console.error("No projectId found");
+      return;
     }
+
+    console.log("Starting regeneration for projectId:", projectId);
+
+    await confirm({
+      title: "Regenerate All Artifacts",
+      description: "This will update all diagrams, specs, and prompt packs based on current project data. This process may take a few minutes.",
+      confirmText: "Regenerate",
+      onConfirm: async () => {
+        setIsRegenerating(true);
+        console.log("Calling /api/generate...");
+
+        try {
+          const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectId }),
+          });
+
+          console.log("Generate API response status:", response.status);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Generate API error response:", errorText);
+            throw new Error("Failed to regenerate artifacts");
+          }
+
+          const result = await response.json();
+          console.log("Generate API success:", result);
+
+          // Refetch the updated artifacts
+          console.log("Fetching updated artifacts...");
+          const artifactsResponse = await fetch(`/api/artifacts?projectId=${projectId}`);
+          if (artifactsResponse.ok) {
+            const data = await artifactsResponse.json();
+            console.log("Updated artifacts fetched:", data.artifacts.length, "artifacts");
+            setArtifacts(data.artifacts);
+          }
+
+          toast({
+            title: "Artifacts regenerated",
+            description: "All artifacts have been successfully regenerated.",
+            variant: "success",
+          });
+        } catch (error) {
+          console.error("Error regenerating artifacts:", error);
+          toast({
+            title: "Failed to regenerate artifacts",
+            description: "Please check your network connection and API key.",
+            variant: "error",
+          });
+        } finally {
+          setIsRegenerating(false);
+          console.log("Regeneration complete");
+        }
+      },
+    });
   };
 
   const handleGenerateMasterPrompt = async () => {
@@ -146,7 +176,11 @@ export default function ArtifactsPage() {
       setMasterPrompt(data.prompt);
     } catch (error) {
       console.error("Error generating master prompt:", error);
-      alert(error instanceof Error ? error.message : "Failed to generate master prompt");
+      toast({
+        title: "Failed to generate master prompt",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "error",
+      });
     } finally {
       setIsGeneratingMaster(false);
     }
@@ -447,6 +481,9 @@ export default function ArtifactsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog />
     </div>
   );
 }

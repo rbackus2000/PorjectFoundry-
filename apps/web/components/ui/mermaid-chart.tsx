@@ -39,7 +39,9 @@ export function MermaidChart({ chart, className = "" }: MermaidChartProps) {
         const { svg } = await mermaid.render(id, chart);
         elementRef.current.innerHTML = svg;
       } catch (err) {
-        // Silently catch mermaid syntax errors and show fallback UI
+        // Log mermaid errors to console for debugging
+        console.error("Mermaid rendering error:", err);
+        console.error("Chart content:", chart);
         setError(err instanceof Error ? err.message : "Failed to render chart");
       }
     };

@@ -19,8 +19,8 @@ export function makeErDiagram(backendSpec: BackendSpec): string {
       const typeStr = formatFieldType(field.type);
       const constraints: string[] = [];
 
-      if (field.required) constraints.push("NOT NULL");
-      if (field.unique) constraints.push("UNIQUE");
+      if (field.required) constraints.push("required");
+      if (field.unique) constraints.push("unique");
       if (field.relation) {
         // Parse relation (e.g., "User.id")
         const [relatedEntity] = field.relation.split(".");
@@ -31,8 +31,9 @@ export function makeErDiagram(backendSpec: BackendSpec): string {
         });
       }
 
-      const constraintStr = constraints.length > 0 ? ` ${constraints.join(" ")}` : "";
-      lines.push(`    ${typeStr} ${field.name}${constraintStr}`);
+      // Add constraints as comment if present (Mermaid ERD syntax)
+      const constraintComment = constraints.length > 0 ? ` "${constraints.join(", ")}"` : "";
+      lines.push(`    ${typeStr} ${field.name}${constraintComment}`);
     }
 
     lines.push(`  }`);

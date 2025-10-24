@@ -20,12 +20,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch project with graph
+    console.log(`[Canvas API] Loading graph for project ${projectId}`);
+
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: { graph: true },
     });
 
     if (!project) {
+      console.log(`[Canvas API] ❌ Project not found: ${projectId}`);
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 }
@@ -34,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     if (!project.graph) {
       // Return empty graph if none exists yet
+      console.log(`[Canvas API] ℹ️ No graph found for project, returning empty`);
       return NextResponse.json({
         projectTitle: project.title,
         graph: { nodes: [], edges: [] },
@@ -41,6 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     const graphData = JSON.parse(project.graph.graphData);
+    console.log(`[Canvas API] ✅ Loaded graph: ${graphData.nodes?.length || 0} nodes, ${graphData.edges?.length || 0} edges`);
 
     return NextResponse.json({
       projectTitle: project.title,
@@ -81,8 +86,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Log the save operation
+    console.log(`[Canvas API] Saving graph for project ${projectId}`);
+    console.log(`[Canvas API] Graph data: ${graph.nodes?.length || 0} nodes, ${graph.edges?.length || 0} edges`);
+    console.log(`[Canvas API] First node received:`, JSON.stringify(graph.nodes?.[0], null, 2));
+
     // Update graph
-    await prisma.projectGraph.upsert({
+    const result = await prisma.projectGraph.upsert({
       where: { projectId },
       create: {
         projectId,
@@ -93,7 +103,14 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    console.log(`[Canvas API] ✅ Graph saved successfully: ${result.id}`);
+
+    return NextResponse.json({
+      success: true,
+      graphId: result.id,
+      nodeCount: graph.nodes?.length || 0,
+      edgeCount: graph.edges?.length || 0,
+    });
   } catch (error) {
     console.error("[Canvas API] Error saving graph:", error);
     return NextResponse.json(

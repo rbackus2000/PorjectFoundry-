@@ -4,6 +4,8 @@ import { KpiTile } from "@/components/ui/kpi-tile";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectCreationWizard, ProjectFormData } from "@/components/ProjectCreationWizard";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,6 +40,8 @@ export default function DashboardPage() {
   });
   const [projects, setProjects] = useState<Project[]>([]);
   const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Fetch real dashboard stats and projects
@@ -108,6 +112,71 @@ export default function DashboardPage() {
       alert("Failed to create project. Please try again.");
       throw error; // Re-throw so wizard can handle it
     }
+  };
+
+  const handleDeleteProject = async (projectId: string, projectTitle: string) => {
+    await confirm({
+      title: "Delete Project",
+      description: (
+        <div>
+          <p className="mb-2">Are you sure you want to delete <strong>"{projectTitle}"</strong>?</p>
+          <p className="mb-2">This will permanently delete:</p>
+          <ul className="list-disc list-inside space-y-1 mb-2">
+            <li>The project and all its data</li>
+            <li>All artifacts (PRD, specs, diagrams)</li>
+            <li>All RAG embeddings from Supabase</li>
+          </ul>
+          <p className="text-red-600 dark:text-red-400 font-semibold">This action cannot be undone.</p>
+        </div>
+      ),
+      confirmText: "Delete",
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          console.log(`Deleting project: ${projectId}`);
+
+          const response = await fetch(`/api/projects/${projectId}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Failed to delete project");
+          }
+
+          console.log("Project deleted successfully");
+
+          // Refresh dashboard stats and projects
+          const [statsResponse, projectsResponse] = await Promise.all([
+            fetch("/api/dashboard/stats"),
+            fetch("/api/dashboard/projects"),
+          ]);
+
+          if (statsResponse.ok) {
+            const data = await statsResponse.json();
+            setStats(data);
+          }
+
+          if (projectsResponse.ok) {
+            const data = await projectsResponse.json();
+            setProjects(data);
+          }
+
+          toast({
+            title: "Project deleted",
+            description: `"${projectTitle}" has been permanently deleted.`,
+            variant: "success",
+          });
+        } catch (error) {
+          console.error("Error deleting project:", error);
+          toast({
+            title: "Failed to delete project",
+            description: error instanceof Error ? error.message : "Unknown error",
+            variant: "error",
+          });
+        }
+      },
+    });
   };
 
   if (isLoading) {
@@ -230,22 +299,27 @@ export default function DashboardPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => {
-                              if (confirm("Delete this draft?")) {
-                                // TODO: Add delete API call
-                                console.log("Delete draft:", project.id);
-                              }
-                            }}
+                            onClick={() => handleDeleteProject(project.id, project.title)}
                           >
-                            Delete Draft
+                            Delete
                           </Button>
                         </>
                       ) : (
-                        <Link href={`/prd?projectId=${project.id}`}>
-                          <Button size="sm" variant="outline">
-                            View PRD
+                        <>
+                          <Link href={`/prd?projectId=${project.id}`}>
+                            <Button size="sm" variant="outline">
+                              View PRD
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteProject(project.id, project.title)}
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            Delete
                           </Button>
-                        </Link>
+                        </>
                       )}
                     </div>
                   </div>
@@ -269,6 +343,9 @@ export default function DashboardPage() {
         onSubmit={handleCreateProject}
         projectId={editingDraftId}
       />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog />
     </div>
   );
 }

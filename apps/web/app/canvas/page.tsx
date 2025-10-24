@@ -33,12 +33,21 @@ export default function CanvasPage() {
       }
 
       try {
-        const response = await fetch(`/api/canvas?projectId=${projectId}`);
+        console.log("🔄 Fetching canvas data for project:", projectId);
+        const response = await fetch(`/api/canvas?projectId=${projectId}`, {
+          cache: 'no-store', // Disable caching to always get fresh data
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch canvas data");
         }
 
         const data = await response.json();
+        console.log("📊 Received canvas data:", {
+          title: data.projectTitle,
+          nodeCount: data.graph?.nodes?.length || 0,
+          edgeCount: data.graph?.edges?.length || 0,
+          firstNode: data.graph?.nodes?.[0],
+        });
         setProjectTitle(data.projectTitle);
         setGraphData(data.graph);
       } catch (err) {

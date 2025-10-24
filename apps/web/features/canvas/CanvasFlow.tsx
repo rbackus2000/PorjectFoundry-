@@ -50,9 +50,16 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [forceRegenerate, setForceRegenerate] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Convert graph data to ReactFlow format
   const convertedNodes: Node<ModuleNodeData>[] = useMemo(() => {
+    console.log("📥 Loading graph from database:", {
+      nodeCount: initialGraph.nodes.length,
+      edgeCount: initialGraph.edges.length,
+      firstNode: initialGraph.nodes[0],
+    });
+
     return initialGraph.nodes.map((node) => ({
       id: node.id,
       type: "moduleNode",
@@ -60,7 +67,7 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
       data: {
         label: node.label,
         status: node.status,
-        category: "",
+        category: (node as any).category || "", // Load category from saved data
         description: node.description || "",
       },
     }));
@@ -156,6 +163,13 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
           };
         });
 
+        console.log("🎯 Generated nodes from AI:", {
+          count: generatedNodes.length,
+          firstNode: generatedNodes[0],
+          firstNodeCategory: generatedNodes[0]?.data?.category,
+          allCategories: generatedNodes.map(n => n.data.category),
+        });
+
         setNodes(generatedNodes);
         setNodeIdCounter(generatedNodes.length + 1);
 
@@ -182,8 +196,15 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
         setEdges(generatedEdges);
 
         // Auto-save the generated graph (modules are already positioned in layers)
-        setTimeout(() => {
-          saveGraph(generatedNodes, generatedEdges);
+        setTimeout(async () => {
+          console.log("📊 Auto-saving generated graph...");
+          const saved = await saveGraph(generatedNodes, generatedEdges, false);
+          if (saved) {
+            console.log("✅ Auto-save completed successfully");
+          } else {
+            console.error("❌ Auto-save failed - graph may not persist after refresh");
+            alert("Warning: Failed to auto-save generated modules. Please click 'Save Graph' manually.");
+          }
         }, 500);
 
       } catch (error) {
@@ -197,16 +218,27 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     generateModules();
   }, [projectId, hasGenerated, isGenerating, nodes.length, initialGraph.nodes.length, forceRegenerate]);
 
-  const saveGraph = async (nodesToSave: Node<ModuleNodeData>[], edgesToSave: Edge[]) => {
+  const saveGraph = useCallback(async (nodesToSave: Node<ModuleNodeData>[], edgesToSave: Edge[], showAlert = false) => {
+    console.log("💾 Preparing to save graph. Sample node data BEFORE mapping:", {
+      sampleNode: nodesToSave[0],
+      sampleNodeData: nodesToSave[0]?.data,
+      hasCategory: !!nodesToSave[0]?.data?.category,
+      categoryValue: nodesToSave[0]?.data?.category,
+    });
+
     const graphData = {
-      nodes: nodesToSave.map(({ id, position, data }) => ({
-        id,
-        label: data.label,
-        status: data.status,
-        description: data.description || null,
-        x: position.x,
-        y: position.y,
-      })),
+      nodes: nodesToSave.map(({ id, position, data }) => {
+        const nodeData = {
+          id,
+          label: data.label,
+          status: data.status,
+          description: data.description || null,
+          category: data.category && data.category.length > 0 ? data.category : null, // Only save non-empty category
+          x: position.x,
+          y: position.y,
+        };
+        return nodeData;
+      }),
       edges: edgesToSave.map(({ id, source, target }) => ({
         id,
         source,
@@ -215,16 +247,42 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
       })),
     };
 
+    console.log("💾 Saving graph data AFTER mapping:", {
+      nodeCount: graphData.nodes.length,
+      edgeCount: graphData.edges.length,
+      firstNode: graphData.nodes[0],
+      firstNodeHasCategory: !!graphData.nodes[0]?.category,
+      firstNodeCategory: graphData.nodes[0]?.category,
+      projectId,
+    });
+
     try {
-      await fetch(`/api/canvas?projectId=${projectId}`, {
+      const response = await fetch(`/api/canvas?projectId=${projectId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ graph: graphData }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save graph: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Graph saved successfully:", result);
+
+      if (showAlert) {
+        alert("Graph saved successfully!");
+      }
+
+      return true;
     } catch (error) {
-      console.error("Error saving graph:", error);
+      console.error("❌ Error saving graph:", error);
+      if (showAlert) {
+        alert(`Failed to save graph: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+      return false;
     }
-  };
+  }, [projectId]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -346,40 +404,16 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
   }, [nodes, setEdges]);
 
   const handleSaveGraph = useCallback(async () => {
-    const graphData = {
-      nodes: nodes.map(({ id, position, data }) => ({
-        id,
-        label: data.label,
-        status: data.status,
-        description: data.description || null,
-        x: position.x,
-        y: position.y,
-      })),
-      edges: edges.map(({ id, source, target }) => ({
-        id,
-        source,
-        target,
-        label: null,
-      })),
-    };
+    console.log("💾 Manual save triggered - saving current graph state...");
+    console.log(`📊 Nodes: ${nodes.length}, Edges: ${edges.length}`);
 
+    setIsSaving(true);
     try {
-      const response = await fetch(`/api/canvas?projectId=${projectId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ graph: graphData }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save graph");
-      }
-
-      alert("Graph saved successfully!");
-    } catch (error) {
-      console.error("Error saving graph:", error);
-      alert("Failed to save graph. Please try again.");
+      await saveGraph(nodes, edges, true);
+    } finally {
+      setIsSaving(false);
     }
-  }, [nodes, edges, projectId]);
+  }, [nodes, edges, saveGraph]);
 
   const handleClearCanvas = useCallback(() => {
     if (confirm("Clear all nodes and edges?")) {
@@ -521,8 +555,8 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
             <Button onClick={handleRegenerateModules} size="sm" variant="destructive" className="h-8">
               🔄 Regenerate All
             </Button>
-            <Button onClick={handleSaveGraph} size="sm" variant="default" className="h-8">
-              💾 Save Graph
+            <Button onClick={handleSaveGraph} size="sm" variant="default" className="h-8" disabled={isSaving || isGenerating}>
+              {isSaving ? "💾 Saving..." : "💾 Save Graph"}
             </Button>
             <Button onClick={handleClearCanvas} variant="outline" size="sm" className="h-8">
               🗑️ Clear Canvas
