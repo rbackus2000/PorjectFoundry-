@@ -51,6 +51,7 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
   const [hasGenerated, setHasGenerated] = useState(false);
   const [forceRegenerate, setForceRegenerate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 
   // Convert graph data to ReactFlow format
   const convertedNodes: Node<ModuleNodeData>[] = useMemo(() => {
@@ -95,6 +96,15 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     setNodes(convertedNodes);
     setEdges(convertedEdges);
   }, [convertedNodes, convertedEdges, setNodes, setEdges]);
+
+  // Fit view when nodes count changes (e.g., when filtering by category)
+  useEffect(() => {
+    if (reactFlowInstance && nodes.length > 0) {
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 500 });
+      }, 100);
+    }
+  }, [nodes.length, reactFlowInstance]);
 
   // Auto-generate modules if canvas is empty and has never been saved, OR if user forces regeneration
   useEffect(() => {
@@ -195,6 +205,13 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
 
         setEdges(generatedEdges);
 
+        // Fit view to show all generated nodes
+        setTimeout(() => {
+          if (reactFlowInstance) {
+            reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+          }
+        }, 100);
+
         // Auto-save the generated graph (modules are already positioned in layers)
         setTimeout(async () => {
           console.log("📊 Auto-saving generated graph...");
@@ -216,7 +233,7 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
     }
 
     generateModules();
-  }, [projectId, hasGenerated, isGenerating, nodes.length, initialGraph.nodes.length, forceRegenerate]);
+  }, [projectId, hasGenerated, isGenerating, nodes.length, initialGraph.nodes.length, forceRegenerate, reactFlowInstance]);
 
   const saveGraph = useCallback(async (nodesToSave: Node<ModuleNodeData>[], edgesToSave: Edge[], showAlert = false) => {
     console.log("💾 Preparing to save graph. Sample node data BEFORE mapping:", {
@@ -396,7 +413,14 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
   const handleAutoLayout = useCallback(() => {
     const layoutedNodes = getLayoutedNodes(nodes, edges, layoutDirection);
     setNodes(layoutedNodes);
-  }, [nodes, edges, layoutDirection, setNodes]);
+
+    // Fit view to show all nodes after layout
+    setTimeout(() => {
+      if (reactFlowInstance) {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+      }
+    }, 100);
+  }, [nodes, edges, layoutDirection, setNodes, reactFlowInstance]);
 
   const handleGenerateEdges = useCallback(() => {
     const smartEdges = generateSmartEdges(nodes);
@@ -480,7 +504,9 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
             onConnect={onConnect}
             onEdgeClick={handleEdgeClick}
             nodeTypes={nodeTypes}
+            onInit={setReactFlowInstance}
             fitView
+            fitViewOptions={{ padding: 0.2 }}
             defaultEdgeOptions={{
               animated: true,
               style: {
