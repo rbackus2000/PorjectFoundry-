@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   GitBranch,
   Workflow,
+  LogIn,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -157,17 +158,23 @@ export default function LandingPage() {
               specifications, and AI-optimized prompt packs—automatically.
             </p>
 
-            <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Link href="/dashboard">
-                <Button size="lg" className="text-base px-8 py-6">
-                  Start Building Free
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
-              <Link href="#how-it-works">
-                <Button size="lg" variant="outline" className="text-base px-8 py-6">
-                  See How It Works
-                </Button>
+            <div className="mt-10 flex flex-col items-center justify-center gap-4">
+              <div className="flex items-center gap-x-4">
+                <Link href="/auth/signup">
+                  <Button size="lg" className="text-base px-8 py-6">
+                    Start Building Free
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link href="/auth/signin">
+                  <Button size="lg" variant="outline" className="text-base px-8 py-6">
+                    <LogIn className="mr-2 w-4 h-4" />
+                    Sign In
+                  </Button>
+                </Link>
+              </div>
+              <Link href="#how-it-works" className="text-sm text-primary hover:underline">
+                See how it works ↓
               </Link>
             </div>
 
@@ -328,19 +335,27 @@ export default function LandingPage() {
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
             Join teams using BuildBridge to ship faster, document better, and build with confidence.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/dashboard">
-              <Button size="lg" className="text-base px-10 py-7">
-                Start Building Now
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            <Link href="/canvas">
-              <Button size="lg" variant="outline" className="text-base px-10 py-7">
-                View Demo Canvas
-                <LayoutDashboard className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/auth/signup">
+                <Button size="lg" className="text-base px-10 py-7">
+                  Start Building Now
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+              <Link href="/canvas">
+                <Button size="lg" variant="outline" className="text-base px-10 py-7">
+                  View Demo Canvas
+                  <LayoutDashboard className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/auth/signin" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
           </div>
         </div>
       </section>
