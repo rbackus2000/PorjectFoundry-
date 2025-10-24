@@ -537,6 +537,8 @@ export default function CanvasFlow({ projectId, projectTitle, initialGraph }: Ca
             onInit={setReactFlowInstance}
             fitView
             fitViewOptions={{ padding: 0.2 }}
+            minZoom={0.1}
+            maxZoom={4}
             defaultEdgeOptions={{
               animated: true,
               style: {
