@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  Settings,
+  Palette,
+  FileText,
+  Package,
+  Search,
+  ArrowLeft
+} from "lucide-react";
 
 export function ProjectSidebar() {
   const pathname = usePathname();
@@ -12,11 +21,11 @@ export function ProjectSidebar() {
   // If we're viewing a specific project, show project-specific nav
   if (projectId) {
     const projectItems = [
-      { href: `/dashboard`, label: "← Back to Dashboard", icon: "⚡" },
-      { href: `/canvas?projectId=${projectId}`, label: "Canvas", icon: "🎨" },
-      { href: `/prd?projectId=${projectId}`, label: "PRD", icon: "📝" },
-      { href: `/artifacts?projectId=${projectId}`, label: "Artifacts", icon: "📦" },
-      { href: `/artifacts/rag?projectId=${projectId}`, label: "RAG Search", icon: "🔍" },
+      { href: `/dashboard`, label: "Back to Dashboard", icon: ArrowLeft },
+      { href: `/canvas?projectId=${projectId}`, label: "Canvas", icon: Palette },
+      { href: `/prd?projectId=${projectId}`, label: "PRD", icon: FileText },
+      { href: `/artifacts?projectId=${projectId}`, label: "Artifacts", icon: Package },
+      { href: `/artifacts/rag?projectId=${projectId}`, label: "RAG Search", icon: Search },
     ];
 
     return (
@@ -24,6 +33,7 @@ export function ProjectSidebar() {
         <nav className="p-2 space-y-1">
           {projectItems.map((item) => {
             const isActive = item.href.startsWith(pathname) && item.href !== "/dashboard";
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
@@ -37,7 +47,7 @@ export function ProjectSidebar() {
                 aria-label={`Navigate to ${item.label}`}
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="text-base" aria-hidden="true">{item.icon}</span>
+                <Icon className="w-4 h-4" aria-hidden="true" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -49,8 +59,8 @@ export function ProjectSidebar() {
 
   // Default navigation when not viewing a specific project
   const defaultItems = [
-    { href: "/dashboard", label: "Dashboard", icon: "⚡" },
-    { href: "/settings", label: "Settings", icon: "⚙️" },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (
@@ -58,6 +68,7 @@ export function ProjectSidebar() {
       <nav className="p-2 space-y-1">
         {defaultItems.map((item) => {
           const isActive = pathname === item.href;
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
@@ -71,7 +82,7 @@ export function ProjectSidebar() {
               aria-label={`Navigate to ${item.label}`}
               aria-current={isActive ? "page" : undefined}
             >
-              <span className="text-base" aria-hidden="true">{item.icon}</span>
+              <Icon className="w-4 h-4" aria-hidden="true" />
               <span>{item.label}</span>
             </Link>
           );
