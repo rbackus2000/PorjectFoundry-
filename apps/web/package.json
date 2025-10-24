@@ -16,7 +16,8 @@
     "db:studio": "prisma studio",
     "rag:ingest": "tsx -r dotenv/config scripts/rag-ingest.ts",
     "rag:ingest-dir": "tsx -r dotenv/config scripts/rag-ingest-dir.ts",
-    "print-rag-migration": "tsx scripts/print-rag-migration.ts"
+    "print-rag-migration": "tsx scripts/print-rag-migration.ts",
+    "prd:check": "tsx -r dotenv/config scripts/check-prd.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",

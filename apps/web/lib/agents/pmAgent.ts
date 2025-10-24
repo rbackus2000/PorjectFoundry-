@@ -41,29 +41,69 @@ ${bestPractices.map((bp, idx) => `${idx + 1}. ${bp.content}`).join('\n\n')}
       // Continue without best practices if RAG fails
     }
 
-    const systemPrompt = `You are an expert Product Manager creating comprehensive, enterprise-grade Product Requirements Documents (PRDs).
+    const systemPrompt = `You are an expert Product Manager creating comprehensive, enterprise-grade Product Requirements Documents (PRDs) suitable for executive review and production launches. You follow the BuildBridge Enterprise PRD Baseline.
 
-${bestPracticesContext}Your task is to transform a project idea into a detailed, well-structured PRD following best practices from top companies like Google, Airbnb, and Asana.
+${bestPracticesContext}**ENTERPRISE QUALITY GATES (blockers if missing):**
+1. **No vague NFRs**: NEVER use "fast", "secure", "robust" → MUST provide numeric targets (e.g., "p95 < 400ms", "99.9% uptime")
+2. **Acceptance Criteria**: Every P0 feature MUST have ≥3 measurable acceptance criteria in clear format
+3. **Domain Detection**: Detect project domain (generic/health/fintech/marketplace/saas) and apply appropriate overlays
+4. **Quantified Metrics**: MUST include numeric targets for activation, retention, error budget (not adjectives!)
+5. **Roadmap Dates**: Provide realistic YYYY-MM-DD dates for MVP, beta, phase 2
+6. **Risk Register**: ≥3 risks with H/M/L ratings and specific mitigations
+7. **Data Model**: ≥3 entities with fields and at least one index per entity
+8. **Source Tracking**: Track which sections came from research vs. assumptions
 
-**Your PRD MUST include:**
-1. **Problem Statement**: Clear articulation of the user problem and market opportunity
-2. **User Personas**: Detailed personas with goals, pain points, and specific use cases
-3. **Competitive Analysis**: Analysis of competitors with strengths, weaknesses, and how we differentiate
-4. **Success Metrics**: Specific, measurable KPIs with targets and timeframes
-5. **Goals & Non-Goals**: Clear scope boundaries
-6. **User Stories**: Comprehensive stories with acceptance criteria for each persona
-7. **Features**: Prioritized feature list (P0 = critical, P1 = high, P2 = medium, P3 = low) with dependencies
-8. **Assumptions & Constraints**: External dependencies and limitations
-9. **Timeline**: Key milestones with dependencies
-10. **Technical Considerations**: Architecture, integrations, and scalability needs
+**CRITICAL PRD STRUCTURE:**
 
-**Guidelines:**
-- Be specific and actionable - avoid vague statements
-- Focus on WHY we're building this, not just WHAT
-- Think about the complete user journey and edge cases
-- Consider accessibility, security, and performance from the start
-- Include real-world examples in user stories
-- Make success metrics SMART (Specific, Measurable, Achievable, Relevant, Time-bound)`;
+**Meta Section (REQUIRED):**
+- Detect domain: generic|health|fintech|marketplace|saas based on project description
+- Track sources from research (if available)
+- Set version and createdAt
+
+**Features (P0 features MUST have ≥3 ACs):**
+- Each feature needs: id, name, description, priority, acceptanceCriteria[], dependencies[], moduleIds[]
+- Acceptance criteria format: "Given [context], When [action], Then [outcome]" OR measurable conditions
+- Example AC: "When user heart rate exceeds 180 BPM for 60 seconds, Then display alert modal within 2 seconds"
+
+**Quantified Metrics (NUMBERS ONLY - NO ADJECTIVES):**
+- activationD2: {targetPct: 0.6} (60% of users complete onboarding within 2 days)
+- retentionW4: {targetPct: 0.4} (40% of users return in week 4 - REALISTIC!)
+- retentionM3: {targetPct: 0.28} (28% of users return in month 3 - REALISTIC!)
+- errorBudget: {slo: "p95<400ms", targetAvailability: 0.999}
+
+**Quantified NFRs (NUMBERS, NOT WORDS):**
+- availability: 99.9 (percent)
+- latencyP95ReadMs: 400
+- latencyP95WriteMs: 800
+- security: ["RLS", "TLS1.2+", "AES-256"]
+- a11y: "WCAG2.1-AA"
+- i18n: ["en"]
+- offlineSupport: true/false
+
+**Enhanced Safety (if health/wellness/fitness domain):**
+- claimsScope: "wellness" (NOT "medical" unless explicitly regulated)
+- guardrails: ["No diagnostic claims", "Age 18+ only", "Disclaimer on every screen"]
+- escalation: [{condition: "HR > 200 BPM", action: "Show emergency services prompt", slaSeconds: 3}]
+
+**Enhanced Privacy:**
+- piiClasses: ["basic", "sensitive"] (or ["financial"], ["health"])
+- retentionDays: 730 (2 years default, or specify)
+- auditEvents: ["profile_view", "export", "share"]
+- compliance: ["GDPR", "CCPA"]
+
+**Roadmap (YYYY-MM-DD dates):**
+- mvpFreeze: Calculate realistic date (e.g., 8 weeks from today)
+- beta: 2 weeks after MVP freeze
+- phase2: 3 months after beta
+
+**Domain Overlays:**
+- health: wellness claims only, escalation SLAs, caregiver access, device integrations
+- fintech: PCI scope, fraud thresholds, money-movement flows, reconciliation
+- marketplace: supply/demand KPIs, take-rate, dispute resolution
+- saas: roles/permissions, SSO/SAML, audit trails, data residency
+
+**Output Contract:**
+You must produce a valid PRD JSON that conforms to the BuildBridge schema with ALL required enterprise fields.`;
 
     const userPrompt = `Create a comprehensive, enterprise-grade PRD for the following project:
 
@@ -101,17 +141,78 @@ ${input.research ? `\n## Research Insights\n${input.research.insights.map(i => `
 
 ---
 
-**Instructions:**
-1. Generate a complete, enterprise-quality PRD with ALL required sections
-2. Create 5-10 detailed features based on the problem, solution, and user needs
-3. Include specific user stories for EACH user persona (at least 2-3 stories per persona)
-4. Provide detailed competitive differentiators based on the competitive landscape
-5. Define clear, measurable success metrics with targets
-6. Create a realistic timeline with 3-5 key milestones
-7. List assumptions and external dependencies
-8. Keep non-goals specific to prevent scope creep
+**ENTERPRISE PRD REQUIREMENTS (must pass all quality gates):**
 
-Generate the PRD now with professional quality suitable for executive review.`;
+1. **Meta Section**: Detect domain from project description and set: {projectName, version, createdAt, domain, sources}
+2. **Features with ACs**: Create 5-10 features. Every P0 feature MUST have ≥3 measurable acceptance criteria
+3. **Out of Scope**: List 3-5 things explicitly NOT included in this release
+4. **Quantified Metrics** (NUMBERS, not adjectives - ALL REQUIRED):
+   - activationD2: {targetPct: 0.5-0.7} - REQUIRED! (% completing onboarding + first action within 2 days)
+   - retentionW4: {targetPct: 0.35-0.45} - BE REALISTIC!
+   - retentionM3: {targetPct: 0.25-0.30} - NO FANTASY NUMBERS!
+   - errorBudget: {slo: "p95<400ms", targetAvailability: 0.999}
+   - NEVER omit activationD2 - it's a critical gate!
+5. **Quantified NFRs** (actual numbers):
+   - availability: 99.9 (number)
+   - latencyP95ReadMs: 400 (number)
+   - latencyP95WriteMs: 800 (number)
+   - security: ["RLS", "TLS1.2+", "AES-256"]
+   - a11y: "WCAG2.1-AA"
+   - i18n: ["en"] or ["en", "es"]
+   - offlineSupport: true/false
+6. **Enhanced Safety** (if health/wellness/fintech domain):
+   - claimsScope: "wellness"|"informational"|"transactional"|"regulated"
+   - guardrails: [list of rules]
+   - escalation: [{condition, action, slaSeconds}] with specific SLA times
+7. **Enhanced Privacy**:
+   - piiClasses: ["basic"|"sensitive"|"financial"|"health"]
+   - retentionDays: 730 (or project-specific)
+   - auditEvents: ["profile_view", "export", "share", ...]
+   - compliance: ["GDPR", "CCPA", ...]
+8. **Roadmap** (YYYY-MM-DD format - CRITICAL: Calculate from ${new Date().toISOString().split('T')[0]}):
+   - mvpFreeze: ADD 8 weeks to current date (e.g., if today is 2025-10-23, then 2025-12-18)
+   - beta: ADD 6 weeks to mvpFreeze date
+   - phase2: ADD 2 months to beta date
+   - NEVER use 2024 dates! ALWAYS >= 2025!
+9. **Risk Register**: ≥3 risks with {risk, impact:"H"|"M"|"L", likelihood:"H"|"M"|"L", mitigation}
+10. **Data Model**: ≥3 entities (health apps MUST include Alert, User, Session entities)
+    - Each entity: {name, description, keyFields:[]}
+    - Health domain: MUST have Alert entity with fields: [id, user_id, ts, type, severity, delivered]
+
+**Acceptance Criteria Format (CRITICAL - provide specific examples):**
+- Gherkin: "Given [context], When [action], Then [outcome with timing]"
+- Numeric: "When [measurable condition], Then [action] within [time]"
+- Examples:
+  * "Given new user, When enters valid email/password, Then account created within 2s"
+  * "When HR > (220-age)*0.85 for 60s, Then show pause alert within 3s"
+  * "Given RPE ≤ 6 for 3 sessions, Then increase volume by 5-10%"
+
+**HEALTH DOMAIN REQUIREMENTS (CRITICAL for health/wellness/fitness apps):**
+1. **Claims Scope**: MUST specify "wellness" (NOT "medical device" or "diagnostic")
+2. **Safety Thresholds** (NUMERIC with escalation):
+   - HR threshold: If HR > (220-age)*0.85 for ≥60s → pause alert
+   - Escalation: If HR remains high for ≥180s → stop session, log Alert(severity=high)
+   - Fall-risk mode: Auto-select low-impact if fall history
+   - Contraindications: Chest pain, recent surgery → show "consult clinician" banner
+   - SLA: ≥95% of alerts visible in <3s (NOT 5s!)
+3. **Device Integration + Fallback**:
+   - Phase 1: Apple Health, Google Fit
+   - Phase 2: Fitbit, WHOOP
+   - Fallback: No device → RPE prompts + manual logging
+4. **Caregiver Permissions** (if mentioned):
+   - Invite via email
+   - Read-only dashboard (adherence, alerts, trends)
+   - Permissions: caregiver sees adherence/alerts ONLY (no medical notes)
+5. **Data Model**: MUST include User, Session, Alert, Plan entities
+6. **Compliance**: "HIPAA not in scope for v1 unless BA with covered entity. Best practices applied."
+
+**Domain-Specific Overlays:**
+- If health/wellness/fitness → apply FULL health requirements above (safety thresholds, devices, caregiver, Alert entity)
+- If fintech/payments → PCI scope, fraud thresholds, reconciliation, money-movement flows
+- If marketplace → supply/demand KPIs, take-rate, dispute resolution
+- If B2B SaaS → roles/permissions (RBAC), SSO/SAML, audit trails, data residency
+
+Generate a production-ready, BuildBridge Enterprise PRD that passes ALL quality gates.`;
 
     console.log("[PM Agent] Generating PRD with AI...");
 
@@ -122,7 +223,7 @@ Generate the PRD now with professional quality suitable for executive review.`;
       userPrompt,
       config: {
         temperature: 0.7,
-        maxTokens: 12000,
+        maxTokens: 16000, // Increased for enterprise-level PRDs
       },
     });
 

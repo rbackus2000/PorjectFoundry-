@@ -23,8 +23,31 @@ const prdWorker = new Worker<GeneratePRDJobData>(
     // Update job progress
     await job.updateProgress(10);
 
+    // Fetch existing PRD to get current version
+    const existingPRD = await prisma.artifact.findFirst({
+      where: {
+        projectId,
+        type: "PRD",
+      },
+    });
+
+    let currentVersion = "1.0";
+    if (existingPRD) {
+      try {
+        const existingPRDData = JSON.parse(existingPRD.content);
+        const versionMatch = existingPRDData.version?.match(/^(\d+)\.(\d+)$/);
+        if (versionMatch) {
+          const major = parseInt(versionMatch[1]);
+          const minor = parseInt(versionMatch[2]);
+          currentVersion = `${major}.${minor + 1}`;
+        }
+      } catch (err) {
+        console.warn("[Worker] Could not parse existing PRD version, defaulting to 1.0");
+      }
+    }
+
     // Generate PRD using PM agent
-    const prd = await generatePRD({
+    let prd = await generatePRD({
       idea: {
         title: ideaTitle,
         pitch: ideaPitch,
@@ -42,6 +65,23 @@ const prdWorker = new Worker<GeneratePRDJobData>(
       graph: moduleGraph || { nodes: [], edges: [] },
       research: undefined,
     });
+
+    // Check completeness and fill missing enterprise sections
+    const { checkAndFillPRDCompleteness, formatCompletenessReport } = await import("../validation/prdCompleteness");
+    const { prd: completePRD, report } = checkAndFillPRDCompleteness(prd);
+
+    console.log(formatCompletenessReport(report));
+
+    if (report.filledSections.length > 0) {
+      console.log(`[Worker] Auto-filled ${report.filledSections.length} missing section(s)`);
+    }
+
+    // Use the completed PRD
+    prd = completePRD;
+
+    // Override version and lastUpdated with correct values
+    prd.version = currentVersion;
+    prd.lastUpdated = new Date().toISOString();
 
     await job.updateProgress(80);
 

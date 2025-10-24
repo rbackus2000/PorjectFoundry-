@@ -21,9 +21,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing PRD data" }, { status: 400 });
     }
 
-    // Validate PRD schema
-    const validatedPrd = PRDSchema.parse(prd);
-
     // Update the PRD artifact in the database
     const artifact = await prisma.artifact.findFirst({
       where: {
@@ -35,6 +32,27 @@ export async function POST(request: NextRequest) {
     if (!artifact) {
       return NextResponse.json({ error: "PRD not found" }, { status: 404 });
     }
+
+    // Parse existing PRD to get current version
+    let newVersion = "1.0";
+    try {
+      const existingPRD = JSON.parse(artifact.content);
+      const versionMatch = existingPRD.version?.match(/^(\d+)\.(\d+)$/);
+      if (versionMatch) {
+        const major = parseInt(versionMatch[1]);
+        const minor = parseInt(versionMatch[2]);
+        newVersion = `${major}.${minor + 1}`;
+      }
+    } catch (err) {
+      console.warn("[API] Could not parse existing PRD version, defaulting to 1.0");
+    }
+
+    // Update version and lastUpdated in the PRD content
+    prd.version = newVersion;
+    prd.lastUpdated = new Date().toISOString();
+
+    // Validate PRD schema
+    const validatedPrd = PRDSchema.parse(prd);
 
     await prisma.artifact.update({
       where: { id: artifact.id },
@@ -50,14 +68,14 @@ export async function POST(request: NextRequest) {
       data: {
         projectId,
         type: "PRDUpdated",
-        payload: JSON.stringify({ version: artifact.version + 1 }),
+        payload: JSON.stringify({ version: newVersion }),
       },
     });
 
     return NextResponse.json({
       success: true,
       message: "PRD updated successfully",
-      version: artifact.version + 1,
+      version: newVersion,
     });
   } catch (error: any) {
     console.error("[API] Error updating PRD:", error);

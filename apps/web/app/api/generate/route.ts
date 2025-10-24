@@ -56,6 +56,43 @@ export async function POST(request: NextRequest) {
     console.log("[API] Starting generation...");
     const result = await orchestrator.generate({ idea, graph });
 
+    // Get current PRD version and increment it
+    const existingPRD = await prisma.artifact.findFirst({
+      where: { projectId, type: "PRD" },
+    });
+
+    let currentVersion = "1.0";
+    if (existingPRD) {
+      try {
+        const existingPRDData = JSON.parse(existingPRD.content);
+        const versionMatch = existingPRDData.version?.match(/^(\d+)\.(\d+)$/);
+        if (versionMatch) {
+          const major = parseInt(versionMatch[1]);
+          const minor = parseInt(versionMatch[2]);
+          currentVersion = `${major}.${minor + 1}`;
+        }
+      } catch (err) {
+        console.warn("[API] Could not parse existing PRD version, defaulting to 1.0");
+      }
+    }
+
+    // Check completeness and fill missing enterprise sections
+    const { checkAndFillPRDCompleteness, formatCompletenessReport } = await import("@/lib/validation/prdCompleteness");
+    const { prd: completePRD, report } = checkAndFillPRDCompleteness(result.prd);
+
+    console.log(formatCompletenessReport(report));
+
+    if (report.filledSections.length > 0) {
+      console.log(`[API] Auto-filled ${report.filledSections.length} missing section(s)`);
+    }
+
+    // Use the completed PRD
+    result.prd = completePRD;
+
+    // Set version and lastUpdated on generated PRD
+    result.prd.version = currentVersion;
+    result.prd.lastUpdated = new Date().toISOString();
+
     // Build Mermaid diagrams
     const mermaidFlow = makeFlowchart(graph);
     const mermaidERD = makeErDiagram(result.backendSpec);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Core Schemas for Project Foundry
+ * Core Schemas for BuildBridge
  * These schemas define the structure of all data flowing through the system
  */
 
@@ -116,7 +116,181 @@ export const PRDMilestoneSchema = z.object({
 });
 export type PRDMilestone = z.infer<typeof PRDMilestoneSchema>;
 
+// Enterprise-level PRD sections (all fields nullable for flexible AI generation)
+export const PRDSafetyGuardrailsSchema = z.object({
+  scopeOfClaims: z.string().nullable(), // Wellness vs medical claims boundary
+  contraindications: z.array(z.string()).nullable(), // What triggers stop conditions
+  riskMitigation: z.array(z.string()).nullable(), // How we prevent harm
+  escalationPath: z.string().nullable(), // When/how to escalate to human review
+  humanReview: z.string().nullable(), // What requires PT/clinician review
+}).nullable();
+export type PRDSafetyGuardrails = z.infer<typeof PRDSafetyGuardrailsSchema>;
+
+export const PRDAccessibilityRequirementsSchema = z.object({
+  wcagLevel: z.string().nullable(), // "WCAG 2.1 AA", etc.
+  textSize: z.string().nullable(), // "16-18pt default"
+  tapTargets: z.string().nullable(), // "44x44 minimum"
+  voiceSupport: z.string().nullable(), // Voice cueing capabilities
+  colorContrast: z.string().nullable(), // "4.5:1 minimum"
+  offlineMode: z.string().nullable(), // Offline capabilities
+}).nullable();
+export type PRDAccessibilityRequirements = z.infer<typeof PRDAccessibilityRequirementsSchema>;
+
+export const PRDSecurityPrivacySchema = z.object({
+  dataClassification: z.array(z.string()).nullable(), // PII, PHI, wellness data, etc.
+  encryption: z.string().nullable(), // "TLS 1.2+, AES-256 at rest"
+  authentication: z.string().nullable(), // Auth requirements
+  accessControl: z.string().nullable(), // RLS, RBAC, etc.
+  audit: z.array(z.string()).nullable(), // What gets logged
+  dataRetention: z.string().nullable(), // Retention policy
+  compliance: z.array(z.string()).nullable(), // GDPR, HIPAA, SOC 2, etc.
+}).nullable();
+export type PRDSecurityPrivacy = z.infer<typeof PRDSecurityPrivacySchema>;
+
+export const PRDDeviceIntegrationSchema = z.object({
+  phase1: z.array(z.string()).nullable(), // Apple Health, Google Fit
+  phase2: z.array(z.string()).nullable(), // Fitbit, WHOOP, etc.
+  degradedMode: z.string().nullable(), // Fallback if no device
+}).nullable();
+export type PRDDeviceIntegration = z.infer<typeof PRDDeviceIntegrationSchema>;
+
+export const PRDNonFunctionalRequirementsSchema = z.object({
+  performance: z.object({
+    latencyP95: z.string().nullable(), // "< 400ms"
+    uptime: z.string().nullable(), // "99.9%"
+    coldStart: z.string().nullable(), // "< 1.5s"
+  }).nullable(),
+  scalability: z.string().nullable(), // "10k → 100k DAU"
+  reliability: z.string().nullable(), // Error rates, recovery time
+}).nullable();
+export type PRDNonFunctionalRequirements = z.infer<typeof PRDNonFunctionalRequirementsSchema>;
+
+export const PRDResponsibleAISchema = z.object({
+  explainability: z.string().nullable(), // How we explain AI decisions
+  biasReview: z.string().nullable(), // How we prevent bias
+  hallucinationGuard: z.string().nullable(), // Safety rails for AI
+  languageSupport: z.array(z.string()).nullable(), // EN, ES, etc.
+}).nullable();
+export type PRDResponsibleAI = z.infer<typeof PRDResponsibleAISchema>;
+
+export const PRDReleasePlanSchema = z.object({
+  betaCohort: z.string().nullable(), // "200 seniors, 6 weeks"
+  pricing: z.string().nullable(), // "$7.99/mo after 14-day trial"
+  support: z.string().nullable(), // Support channels and SLA
+}).nullable();
+export type PRDReleasePlan = z.infer<typeof PRDReleasePlanSchema>;
+
+export const PRDRiskSchema = z.object({
+  risk: z.string(),
+  impact: z.enum(["High", "Med", "Low"]),
+  likelihood: z.enum(["High", "Med", "Low"]),
+  mitigation: z.string(),
+});
+export type PRDRisk = z.infer<typeof PRDRiskSchema>;
+
+export const PRDDataModelSchema = z.object({
+  entities: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    keyFields: z.array(z.string()),
+  })).nullable(),
+  invariants: z.array(z.string()).nullable(), // "Every WorkoutSession must map to a Plan version"
+}).nullable();
+export type PRDDataModel = z.infer<typeof PRDDataModelSchema>;
+
+// Enterprise PRD: Meta section
+export const PRDMetaSchema = z.object({
+  projectName: z.string(),
+  version: z.string(),
+  createdAt: z.string(), // ISO-8601
+  domain: z.enum(["generic", "health", "fintech", "marketplace", "saas"]),
+  sources: z.array(z.string()).nullable(), // URLs or doc IDs from RAG
+});
+export type PRDMeta = z.infer<typeof PRDMetaSchema>;
+
+// Enterprise PRD: Enhanced feature with acceptance criteria
+export const PRDFeatureSchema = z.object({
+  id: z.string(),
+  name: z.string(), // Keep "name" for backward compatibility
+  title: z.string().optional(), // Add "title" as optional alias
+  description: z.string(),
+  priority: z.enum(["P0", "P1", "P2", "P3"]),
+  acceptanceCriteria: z.array(z.string()), // Gherkin-style or clear ACs
+  dependencies: z.array(z.string()).nullable(), // Feature IDs
+  moduleIds: z.array(z.string()).nullable(), // References to graph nodes
+});
+export type PRDFeature = z.infer<typeof PRDFeatureSchema>;
+
+// Enterprise PRD: Quantified metrics
+export const PRDMetricsSchema = z.object({
+  activationD2: z.object({
+    targetPct: z.number().min(0).max(1), // e.g., 0.6 for 60%
+    baseline: z.number().min(0).max(1).nullable(),
+  }).nullable(),
+  retentionW4: z.object({
+    targetPct: z.number().min(0).max(1), // e.g., 0.4 for 40%
+    baseline: z.number().min(0).max(1).nullable(),
+  }).nullable(),
+  retentionM3: z.object({
+    targetPct: z.number().min(0).max(1), // e.g., 0.28 for 28%
+    baseline: z.number().min(0).max(1).nullable(),
+  }).nullable(),
+  errorBudget: z.object({
+    slo: z.string(), // e.g., "p95<400ms"
+    targetAvailability: z.number().min(0).max(1), // e.g., 0.999
+  }).nullable(),
+  customMetrics: z.array(z.object({
+    name: z.string(),
+    target: z.string(),
+    baseline: z.string().nullable(),
+  })).nullable(),
+}).nullable();
+export type PRDMetrics = z.infer<typeof PRDMetricsSchema>;
+
+// Enterprise PRD: Enhanced NFR with numbers
+export const PRDEnhancedNFRSchema = z.object({
+  availability: z.number().min(0).max(100).nullable(), // e.g., 99.9
+  latencyP95ReadMs: z.number().nullable(), // e.g., 400
+  latencyP95WriteMs: z.number().nullable(), // e.g., 800
+  security: z.array(z.string()).nullable(), // ["RLS", "TLS1.2+", "AES-256"]
+  a11y: z.string().nullable(), // "WCAG2.1-AA"
+  i18n: z.array(z.string()).nullable(), // ["en", "es"]
+  offlineSupport: z.boolean().nullable(),
+}).nullable();
+export type PRDEnhancedNFR = z.infer<typeof PRDEnhancedNFRSchema>;
+
+// Enterprise PRD: Enhanced safety with escalation
+export const PRDEnhancedSafetySchema = z.object({
+  claimsScope: z.enum(["wellness", "informational", "transactional", "regulated", "none"]).nullable(),
+  guardrails: z.array(z.string()).nullable(), // Rules and boundaries
+  escalation: z.array(z.object({
+    condition: z.string(),
+    action: z.string(),
+    slaSeconds: z.number().nullable(),
+  })).nullable(),
+}).nullable();
+export type PRDEnhancedSafety = z.infer<typeof PRDEnhancedSafetySchema>;
+
+// Enterprise PRD: Privacy with specific retention
+export const PRDEnhancedPrivacySchema = z.object({
+  piiClasses: z.array(z.enum(["basic", "sensitive", "financial", "health"])).nullable(),
+  retentionDays: z.number().nullable(), // e.g., 730
+  auditEvents: z.array(z.string()).nullable(), // ["profile_view", "export", "share"]
+  compliance: z.array(z.string()).nullable(), // ["GDPR", "HIPAA", "SOC2"]
+}).nullable();
+export type PRDEnhancedPrivacy = z.infer<typeof PRDEnhancedPrivacySchema>;
+
+// Enterprise PRD: Roadmap with dates
+export const PRDRoadmapSchema = z.object({
+  mvpFreeze: z.string().nullable(), // YYYY-MM-DD
+  beta: z.string().nullable(), // YYYY-MM-DD
+  phase2: z.string().nullable(), // YYYY-MM-DD
+  milestones: z.array(PRDMilestoneSchema).nullable(),
+}).nullable();
+export type PRDRoadmap = z.infer<typeof PRDRoadmapSchema>;
+
 export const PRDSchema = z.object({
+  // Legacy fields (maintain backward compatibility)
   title: z.string(),
   version: z.string(),
   lastUpdated: z.string(), // ISO date
@@ -124,6 +298,9 @@ export const PRDSchema = z.object({
   problemStatement: z.string(), // Clear articulation of the user problem
   goals: z.array(z.string()),
   nonGoals: z.array(z.string()).nullable(),
+
+  // Enterprise: Meta section
+  meta: PRDMetaSchema.nullable(),
 
   // Enhanced persona section
   userPersonas: z.array(PRDPersonaSchema).nullable(),
@@ -145,16 +322,10 @@ export const PRDSchema = z.object({
       acceptanceCriteria: z.array(z.string()),
     })
   ),
-  features: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      description: z.string(),
-      priority: z.enum(["P0", "P1", "P2", "P3"]),
-      moduleIds: z.array(z.string()).nullable(), // References to graph nodes
-      dependencies: z.array(z.string()).nullable(), // Feature dependencies
-    })
-  ),
+
+  // Enterprise: Enhanced features with ACs
+  features: z.array(PRDFeatureSchema),
+  outOfScope: z.array(z.string()).nullable(), // What's explicitly not included
 
   // Assumptions and constraints
   assumptions: z.array(z.string()).nullable(),
@@ -166,6 +337,24 @@ export const PRDSchema = z.object({
     milestones: z.array(PRDMilestoneSchema),
     totalDuration: z.string().nullable(), // "12 weeks", "3 months", etc.
   }).nullable(),
+
+  // Enterprise-level sections (legacy - descriptive)
+  safetyGuardrails: PRDSafetyGuardrailsSchema,
+  accessibilityRequirements: PRDAccessibilityRequirementsSchema,
+  securityPrivacy: PRDSecurityPrivacySchema,
+  deviceIntegration: PRDDeviceIntegrationSchema,
+  nonFunctionalRequirements: PRDNonFunctionalRequirementsSchema,
+  responsibleAI: PRDResponsibleAISchema,
+  releasePlan: PRDReleasePlanSchema,
+  riskRegister: z.array(PRDRiskSchema).nullable(),
+  dataModel: PRDDataModelSchema,
+
+  // Enterprise: Quantified sections (new - measurable)
+  metrics: PRDMetricsSchema,
+  nfr: PRDEnhancedNFRSchema,
+  safety: PRDEnhancedSafetySchema,
+  privacy: PRDEnhancedPrivacySchema,
+  roadmap: PRDRoadmapSchema,
 
   sections: z.array(PRDSectionSchema).nullable(), // Free-form sections
   citations: z
